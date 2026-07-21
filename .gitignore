@@ -1,0 +1,22 @@
+# Vídeos
+input/
+output/
+
+# Dataset
+datasets/
+runs/
+weights/
+
+# Python
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# Others
+old/
+
+# Windows
+Thumbs.db
+Desktop.ini
