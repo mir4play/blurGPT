@@ -5,12 +5,12 @@ from ultralytics import YOLO
 
 class Detector:
 
-    def __init__(self, model_path, device=0, detect_every=1):
+    def __init__(self, model_path, device=0, detect_every=1, imgsz=640):
 
         self.model = YOLO(model_path)
         self.device = device
         self.detect_every = detect_every
-
+        self.imgsz = imgsz
         self.last_boxes = None
         self.frame_count = 0
 
@@ -29,6 +29,7 @@ class Detector:
             results = self.model.predict(
                 frame,
                 device=self.device,
+                imgsz=1280,
                 verbose=False
             )
 

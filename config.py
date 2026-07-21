@@ -57,6 +57,8 @@ CLASSES = {
 # 3 = um a cada três
 FACE_DETECT_EVERY = 2
 PLATE_DETECT_EVERY = 2
+FACE_IMGSZ = 640
+PLATE_IMGSZ = 1280
 
 # ==========================================================
 # PIXELIZAÇÃO

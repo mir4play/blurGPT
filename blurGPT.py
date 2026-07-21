@@ -13,7 +13,24 @@ from core.video import VideoProcessor
 from core.detector import Detector
 from core.pixelate import pixelate
 from core.report import Stats, print_report
+import torch
 
+# ==========================
+# Ambiente
+# ==========================
+
+print(f"PyTorch............. {torch.__version__}")
+
+if torch.cuda.is_available():
+    print(f"GPU................. {torch.cuda.get_device_name(0)}")
+else:
+    print("GPU................. CPU")
+    raise RuntimeError(
+        "CUDA não está disponível.\n"
+        "Consulte o README.md para instalar a versão CUDA do PyTorch."
+    )
+
+print()
 
 def main():
 
@@ -49,13 +66,15 @@ def main():
     face_detector = Detector(
         FACE_MODEL,
         DEVICE,
-        FACE_DETECT_EVERY
+        FACE_DETECT_EVERY,
+        FACE_IMGSZ
     )
 
     plate_detector = Detector(
         PLATE_MODEL,
         DEVICE,
-        PLATE_DETECT_EVERY
+        PLATE_DETECT_EVERY,
+        FACE_IMGSZ
     )
 
     # ==========================
