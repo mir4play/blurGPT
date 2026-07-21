@@ -1,3 +1,12 @@
+# ==========================
+# BlurGPT
+# ==========================
+# Autor: Adler Nicolau
+# Data: 21/07/2026
+# Versão: 0.1.0
+# ==========================
+
+
 from config import *
 from tqdm import tqdm
 from core.video import VideoProcessor
