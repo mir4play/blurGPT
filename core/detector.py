@@ -29,7 +29,7 @@ class Detector:
             results = self.model.predict(
                 frame,
                 device=self.device,
-                imgsz=1280,
+                imgsz=self.imgsz,
                 verbose=False
             )
 

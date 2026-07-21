@@ -3,7 +3,7 @@
 # ==========================
 # Autor: Adler Nicolau
 # Data: 21/07/2026
-# Versão: 0.1.0
+# Versão: 0.2.0
 # ==========================
 
 
@@ -74,7 +74,7 @@ def main():
         PLATE_MODEL,
         DEVICE,
         PLATE_DETECT_EVERY,
-        FACE_IMGSZ
+        PLATE_IMGSZ
     )
 
     # ==========================
