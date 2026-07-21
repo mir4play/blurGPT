@@ -46,10 +46,16 @@ def main():
     # Detector
     # ==========================
 
-    detector = Detector(
-        MODEL,
+    face_detector = Detector(
+        FACE_MODEL,
         DEVICE,
-        DETECT_EVERY
+        FACE_DETECT_EVERY
+    )
+
+    plate_detector = Detector(
+        PLATE_MODEL,
+        DEVICE,
+        PLATE_DETECT_EVERY
     )
 
     # ==========================
@@ -64,13 +70,23 @@ def main():
             break
 
         # Detecta
-        boxes = detector.detect(frame, stats)
+        face_boxes = face_detector.detect(frame, stats)
+        plate_boxes = plate_detector.detect(frame, stats)
 
         # Pixeliza
         pixelate(
             frame=frame,
-            boxes=boxes,
-            face_class=CLASSES["face"],
+            boxes=face_boxes,
+            target_class=CLASSES["face"],
+            pixel_size=PIXEL_SIZE,
+            stats=stats,
+            margin=BOX_MARGIN
+        )
+
+        pixelate(
+            frame=frame,
+            boxes=plate_boxes,
+            target_class=CLASSES["plate"],
             pixel_size=PIXEL_SIZE,
             stats=stats,
             margin=BOX_MARGIN

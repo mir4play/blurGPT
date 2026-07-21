@@ -2,29 +2,37 @@
 
 Ferramenta para anonimização automática de vídeos utilizando YOLO.
 
-## Instalação
+# Instalação
 
-Crie um ambiente virtual:
+## 1. Criar ambiente virtual
 
 ```bash
 python -m venv .venv
 ```
 
-Ative o ambiente.
+## 2. Ativar
 
-Windows:
+Windows
 
 ```bash
 .venv\Scripts\activate
 ```
 
-Instale as dependências:
+## 3. Instalar PyTorch com CUDA
+
+Para GPUs NVIDIA com CUDA:
+
+```bash
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
+```
+
+## 4. Instalar as demais dependências
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Execute:
+## 5. Executar
 
 ```bash
 python blurGPT.py

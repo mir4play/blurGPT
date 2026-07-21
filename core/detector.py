@@ -15,11 +15,11 @@ class Detector:
         self.frame_count = 0
 
     def detect(self, frame, stats=None):
-
         """
-        Retorna as caixas detectadas.
-        Pode reutilizar as caixas de frames anteriores
-        conforme detect_every.
+        Executa a detecção usando o modelo carregado.
+
+        Se detect_every > 1, reutiliza as detecções
+        dos frames anteriores para ganhar desempenho.
         """
 
         if self.frame_count % self.detect_every == 0:

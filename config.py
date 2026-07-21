@@ -23,11 +23,11 @@ OUTPUT_VIDEO = "output/saida.mp4"
 # MODELOS
 # ==========================================================
 
-# Modelo principal (faces)
-MODEL = "models/yolo26s.pt"
+# Modelo principal (faces) Yolo26s
+FACE_MODEL = "models/yolo26s.pt"
 
-# Modelo de placas (futuro)
-PLATE_MODEL = None
+# Modelo de placas YOLOv8
+PLATE_MODEL = "models/platesYOLOv8.pt"
 
 # ==========================================================
 # DISPOSITIVO
@@ -44,7 +44,7 @@ DEVICE = 0
 # Classes treinadas
 CLASSES = {
     "face": 1,
-    "plate": None
+    "plate": 0
 }
 
 # ==========================================================
@@ -55,7 +55,8 @@ CLASSES = {
 # 1 = todos os frames
 # 2 = metade dos frames
 # 3 = um a cada três
-DETECT_EVERY = 2
+FACE_DETECT_EVERY = 2
+PLATE_DETECT_EVERY = 2
 
 # ==========================================================
 # PIXELIZAÇÃO

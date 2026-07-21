@@ -5,13 +5,13 @@ import cv2
 def pixelate(
     frame,
     boxes,
-    face_class,
+    target_class,
     pixel_size,
     stats=None,
     margin=0
 ):
     """
-    Pixeliza todas as faces encontradas.
+    Pixeliza todas as detecções da classe desejada.
 
     Parameters
     ----------
@@ -21,8 +21,8 @@ def pixelate(
     boxes : ultralytics.engine.results.Boxes
         Caixas retornadas pela YOLO.
 
-    face_class : int
-        Classe correspondente ao rosto.
+    target_class : int
+        Classe que será pixelizada.
 
     pixel_size : int
         Intensidade da pixelização.
@@ -45,7 +45,7 @@ def pixelate(
 
         cls = int(box.cls.item())
 
-        if cls != face_class:
+        if cls != target_class:
             continue
 
         x1, y1, x2, y2 = map(int, box.xyxy[0])
