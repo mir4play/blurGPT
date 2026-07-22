@@ -2,8 +2,10 @@
 # BlurGPT
 # ==========================
 # Autor: Adler Nicolau
-# Data: 21/07/2026
-# Versão: 0.3.0
+# Date: 21/07/2026
+#
+# Main program
+# This program gets the video in input folder, and pixelate plates and faces exporting videos to output folder.
 # ==========================
 
 
@@ -31,17 +33,13 @@ if torch.cuda.is_available():
 else:
     print("GPU................. CPU")
     raise RuntimeError(
-        "CUDA não está disponível.\n"
-        "Consulte o README.md para instalar a versão CUDA do PyTorch."
+        "CUDA is not available.\n"
+        "Read README.md to install the CUDA version of PyTorch."
     )
 
 print()
 
 def main():
-
-    # ==========================
-    # Job Manager
-    # ==========================
 
     manager = JobManager()
 
@@ -51,106 +49,123 @@ def main():
         print("No videos found.")
         return
 
-    job = jobs[0]
-
-    manager.start(job)
-
-    # ==========================
-    # Statistics
-    # ==========================
-
-    stats = Stats()
-    
-
-    # ==========================
-    # Video
-    # ==========================
-
-    video = VideoProcessor(
-        manager.get_processing_path(job),
-        manager.get_temp_output_path(job),
-        VIDEO_CODEC
-)
-    
-    # ==========================
-    # Progress Bar
-    # ==========================
-
-    progress = tqdm(
-    total=video.total_frames,
-    desc="Processando",
-    unit="frame"
-)
-    # ==========================
-    # Detector
-    # ==========================
-
-    face_detector = Detector(
-        FACE_MODEL,
-        DEVICE,
-        FACE_DETECT_EVERY,
-        FACE_IMGSZ
-    )
-
-    plate_detector = Detector(
-        PLATE_MODEL,
-        DEVICE,
-        PLATE_DETECT_EVERY,
-        PLATE_IMGSZ
-    )
-
-    # ==========================
-    # Main loop
-    # ==========================
+    total_jobs = len(jobs)
+    current_job = 0
 
     while True:
 
-        ret, frame = video.read()
+        jobs = manager.find_jobs()
 
-        if not ret:
+        if not jobs:
             break
 
-        # Detection
-        face_boxes = face_detector.detect(frame, stats)
-        plate_boxes = plate_detector.detect(frame, stats)
+        job = jobs[0]
 
-        # Pixelation
-        pixelate(
-            frame=frame,
-            boxes=face_boxes,
-            target_class=CLASSES["face"],
-            pixel_size=PIXEL_SIZE,
-            stats=stats,
-            margin=BOX_MARGIN
-        )
+        manager.start(job)
 
-        pixelate(
-            frame=frame,
-            boxes=plate_boxes,
-            target_class=CLASSES["plate"],
-            pixel_size=PIXEL_SIZE,
-            stats=stats,
-            margin=BOX_MARGIN
-        )
+        current_job += 1
 
-        # Write frame
-        video.write(frame, stats)
+        print()
+        print("=" * 60)
+        print(f"[{current_job}/{total_jobs}] Processing: {job.filename}")
+        print("=" * 60)
+        print()
 
+        # ==========================
         # Statistics
-        stats.frame_processed()
-        progress.update(1)
+        # ==========================
 
-    # ==========================
-    # Shutdown
-    # ==========================
-    progress.close()
-    video.release()
-    manager.finish(job)
+        stats = Stats()
 
-    print_report(
-        stats,
-        video
-    )
+        # ==========================
+        # Video
+        # ==========================
+
+        video = VideoProcessor(
+            manager.get_processing_path(job),
+            manager.get_temp_output_path(job),
+            VIDEO_CODEC
+        )
+
+        # ==========================
+        # Progress Bar
+        # ==========================
+
+        progress = tqdm(
+            total=video.total_frames,
+            desc="Processing",
+            unit="frame"
+        )
+
+        # ==========================
+        # Detectors
+        # ==========================
+
+        face_detector = Detector(
+            FACE_MODEL,
+            DEVICE,
+            FACE_DETECT_EVERY,
+            FACE_IMGSZ
+        )
+
+        plate_detector = Detector(
+            PLATE_MODEL,
+            DEVICE,
+            PLATE_DETECT_EVERY,
+            PLATE_IMGSZ
+        )
+
+        # ==========================
+        # Frame loop
+        # ==========================
+
+        while True:
+
+            ret, frame = video.read()
+
+            if not ret:
+                break
+
+            face_boxes = face_detector.detect(frame, stats)
+            plate_boxes = plate_detector.detect(frame, stats)
+
+            pixelate(
+                frame=frame,
+                boxes=face_boxes,
+                target_class=CLASSES["face"],
+                pixel_size=PIXEL_SIZE,
+                stats=stats,
+                margin=BOX_MARGIN
+            )
+
+            pixelate(
+                frame=frame,
+                boxes=plate_boxes,
+                target_class=CLASSES["plate"],
+                pixel_size=PIXEL_SIZE,
+                stats=stats,
+                margin=BOX_MARGIN
+            )
+
+            video.write(frame, stats)
+
+            stats.frame_processed()
+
+            progress.update(1)
+
+        progress.close()
+
+        video.release()
+
+        manager.finish(job)
+
+        print_report(
+            stats,
+            video
+        )
+
+    print()
+    print("Batch processing finished.")
 
 
 if __name__ == "__main__":

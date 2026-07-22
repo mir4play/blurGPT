@@ -127,7 +127,7 @@ BlurGPT currently uses two YOLO models.
 
 # Current Status
 
-Current version: **0.2.0**
+Current version: **0.3.1**
 
 Implemented:
 
