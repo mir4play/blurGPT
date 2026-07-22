@@ -3,17 +3,22 @@
 # ==========================
 # Autor: Adler Nicolau
 # Data: 21/07/2026
-# Versão: 0.2.0
+# Versão: 0.3.0
 # ==========================
 
 
 from config import *
+
+import torch
 from tqdm import tqdm
-from core.video import VideoProcessor
+
 from core.detector import Detector
+from core.jobmanager import JobManager
 from core.pixelate import pixelate
 from core.report import Stats, print_report
-import torch
+from core.video import VideoProcessor
+
+
 
 # ==========================
 # Ambiente
@@ -35,20 +40,37 @@ print()
 def main():
 
     # ==========================
-    # Estatísticas
+    # Job Manager
+    # ==========================
+
+    manager = JobManager()
+
+    jobs = manager.find_jobs()
+
+    if not jobs:
+        print("No videos found.")
+        return
+
+    job = jobs[0]
+
+    manager.start(job)
+
+    # ==========================
+    # Statistics
     # ==========================
 
     stats = Stats()
+    
 
     # ==========================
-    # Vídeo
+    # Video
     # ==========================
 
     video = VideoProcessor(
-        INPUT_VIDEO,
-        OUTPUT_VIDEO,
+        manager.get_processing_path(job),
+        manager.get_temp_output_path(job),
         VIDEO_CODEC
-    )
+)
     
     # ==========================
     # Progress Bar
@@ -78,7 +100,7 @@ def main():
     )
 
     # ==========================
-    # Loop principal
+    # Main loop
     # ==========================
 
     while True:
@@ -88,11 +110,11 @@ def main():
         if not ret:
             break
 
-        # Detecta
+        # Detection
         face_boxes = face_detector.detect(frame, stats)
         plate_boxes = plate_detector.detect(frame, stats)
 
-        # Pixeliza
+        # Pixelation
         pixelate(
             frame=frame,
             boxes=face_boxes,
@@ -111,18 +133,19 @@ def main():
             margin=BOX_MARGIN
         )
 
-        # Grava
+        # Write frame
         video.write(frame, stats)
 
-        # Estatísticas
+        # Statistics
         stats.frame_processed()
         progress.update(1)
 
     # ==========================
-    # Finalização
+    # Shutdown
     # ==========================
     progress.close()
     video.release()
+    manager.finish(job)
 
     print_report(
         stats,

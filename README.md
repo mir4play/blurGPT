@@ -1,73 +1,154 @@
 # BlurGPT
 
-Ferramenta para anonimização automática de vídeos utilizando YOLO.
+BlurGPT is a GPU-accelerated video anonymization tool that automatically detects and pixelates faces and license plates using YOLO models.
 
-# Instalação
+---
 
-## 1. Criar ambiente virtual
+# Features
+
+- 🚀 GPU acceleration (CUDA)
+- 😀 Face detection
+- 🚗 License plate detection
+- 🟪 Pixelation anonymization
+- 📹 Full HD video processing
+- 📊 Processing statistics
+- ⏳ Progress bar
+- 🧩 Modular architecture
+
+---
+
+# Installation
+
+## 1. Create a virtual environment
 
 ```bash
 python -m venv .venv
 ```
 
-## 2. Ativar
+## 2. Activate it
 
-Windows
+### Windows
 
 ```bash
 .venv\Scripts\activate
 ```
 
-## 3. Instalar PyTorch com CUDA
+## 3. Install PyTorch with CUDA
 
-Para GPUs NVIDIA com CUDA:
+For NVIDIA GPUs:
 
 ```bash
 python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
 ```
 
-## 4. Instalar as demais dependências
+> If you don't have an NVIDIA GPU, install the CPU version of PyTorch from https://pytorch.org.
+
+## 4. Install the remaining dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 5. Executar
+---
+
+# Usage
+
+Place your input video inside the `input` folder.
+
+Run:
 
 ```bash
 python blurGPT.py
 ```
 
-## Recursos
+The processed video will be saved into the `output` folder.
 
-- Detecção de rostos
+---
 
-- Pixelização
+# Project Structure
 
-- CUDA
+```text
+BlurGPT/
 
-- Processamento em tempo real
+├── core/
+│   ├── detector.py
+│   ├── pixelate.py
+│   ├── report.py
+│   └── video.py
+│
+├── input/
+├── output/
+├── models/
+│
+├── blurGPT.py
+├── config.py
+├── requirements.txt
+└── README.md
+```
 
-- Barra de progresso
+---
 
-- Arquitetura modular
+# AI Models
 
-## Estrutura
+BlurGPT currently uses two YOLO models.
 
-core/
+## Face Detection
 
-models/
+**yolo26s.pt**
 
-input/
+- Custom-trained by the project author using Ultralytics Cloud.
+- Training resolution: **640 × 640**
+- Training epochs: **20**
+- Dataset: **~19,000 face images**
+- Purpose: **Face detection**
 
-output/
+## License Plate Detection
 
-## Requisitos
+**platesYOLOv8.pt**
 
-Python 3.12
+- Pre-trained YOLOv8 model.
+- Source:
+  https://huggingface.co/Koushim/yolov8-license-plate-detection
+- Purpose: **License plate detection**
 
-pip install -r requirements.txt
+> **Inference Resolution**
+>
+> The face detector runs at **640 px**, while the license plate detector runs at **1280 px** to improve the detection of small license plates in Full HD videos.
 
-## Executar
+---
 
-python [blurGPT.py](http://blurGPT.py)
+# Requirements
+
+- Python 3.13
+- CUDA-compatible NVIDIA GPU (recommended)
+- PyTorch with CUDA support
+
+---
+
+# Current Status
+
+Current version: **0.2.0**
+
+Implemented:
+
+- ✅ Face anonymization
+- ✅ License plate anonymization
+- ✅ CUDA acceleration
+- ✅ Modular architecture
+- ✅ Performance report
+- ✅ Progress bar
+
+Upcoming:
+
+- ⏳ Batch processing
+- ⏳ Automatic input folder scanning
+- ⏳ Additional anonymization methods
+- ⏳ Multi-threaded inference
+
+# Technologies
+
+- Python
+- OpenCV - Video processing and frame manipulation
+- Ultralytics YOLO - Object detection
+- PyTorch - Deep learning inference
+- CUDA - GPU acceleration
