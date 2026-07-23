@@ -8,7 +8,7 @@ Altere apenas este arquivo para configurar o programa.
 #==========================================================
 # PROJECT 
 APP_NAME = "BlurGPT"
-VERSION = "0.3.1"
+VERSION = "0.4.0"
 AUTHOR = "Adler Nicolau"
 #==========================================================
 
@@ -17,10 +17,10 @@ AUTHOR = "Adler Nicolau"
 # ==========================================================
 
 # Vídeo de entrada
-INPUT_VIDEO = "input/5.mp4" # obssolete, will be removed in the next version
+# INPUT_VIDEO = "input/5.mp4" # deprecated on v0.3.1
 
 # Vídeo de saída
-OUTPUT_VIDEO = "output/5.mp4" # obssolete, will be removed in the next version
+# OUTPUT_VIDEO = "output/5.mp4" # deprecated on v0.3.1
 
 # ==========================================================
 # MODELOS
@@ -58,8 +58,8 @@ CLASSES = {
 # 1 = todos os frames
 # 2 = metade dos frames
 # 3 = um a cada três
-FACE_DETECT_EVERY = 8
-PLATE_DETECT_EVERY = 5
+FACE_DETECT_EVERY = 2
+PLATE_DETECT_EVERY = 2
 FACE_IMGSZ = 640
 PLATE_IMGSZ = 1280
 

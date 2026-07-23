@@ -53,15 +53,26 @@ pip install -r requirements.txt
 
 # Usage
 
-Place your input video inside the `input` folder.
+Place one or more videos inside the `input` folder.
 
-Run:
-
+```text
+input/
+    video1.mp4
+    video2.mp4
+    video3.mp4
 ```bash
 python blurGPT.py
 ```
 
-The processed video will be saved into the `output` folder.
+BlurGPT will automatically:
+
+Scan the `input` folder.
+Move videos to processing.
+Process them one by one.
+Save the anonymized videos into `output`.
+Archive the original videos into `input_archive`.
+
+Interrupted jobs are automatically resumed from the `processing` folder on the next execution.
 
 ---
 
@@ -72,12 +83,19 @@ BlurGPT/
 
 ├── core/
 │   ├── detector.py
+│   ├── jobmanager.py
 │   ├── pixelate.py
 │   ├── report.py
 │   └── video.py
 │
 ├── input/
+├── processing/
+├── temp/
 ├── output/
+├── input_archive/
+├── input_error/
+├── logs/
+│
 ├── models/
 │
 ├── blurGPT.py
@@ -86,6 +104,25 @@ BlurGPT/
 └── README.md
 ```
 
+# Processing Workflow
+
+```text
+input
+    │
+    ▼
+processing
+    │
+    ▼
+temp
+    │
+    ▼
+output
+
+Original video
+        │
+        ▼
+input_archive
+```
 ---
 
 # AI Models
@@ -127,23 +164,29 @@ BlurGPT currently uses two YOLO models.
 
 # Current Status
 
-Current version: **0.3.1**
+Current version: **0.4.0**
 
 Implemented:
 
 - ✅ Face anonymization
 - ✅ License plate anonymization
 - ✅ CUDA acceleration
-- ✅ Modular architecture
-- ✅ Performance report
+- ✅ Batch video processing
+- ✅ Automatic input folder scanning
+- ✅ Automatic workflow
+- ✅ Safe temporary output
 - ✅ Progress bar
+- ✅ Performance report
+- ✅ Modular architecture
+- ✅ Motion Prediction
 
 Upcoming:
 
-- ⏳ Batch processing
-- ⏳ Automatic input folder scanning
+- ⏳ Automatic error recovery
+- ⏳ Processing logs
+- ⏳ Detector performance optimizations
 - ⏳ Additional anonymization methods
-- ⏳ Multi-threaded inference
+- ⏳ GUI
 
 # Technologies
 
