@@ -2,18 +2,30 @@
 # Videos
 # ==========================================================
 
-input/
-processing/
-temp/
-output/
-input_archive/
-input_error/
+input/*
+!input/.gitkeep
+
+processing/*
+!processing/.gitkeep
+
+temp/*
+!temp/.gitkeep
+
+output/*
+!output/.gitkeep
+
+input_archive/*
+!input_archive/.gitkeep
+
+input_error/*
+!input_error/.gitkeep
 
 # ==========================================================
 # Logs
 # ==========================================================
 
-logs/
+logs/*
+!logs/.gitkeep
 
 # ==========================================================
 # Training

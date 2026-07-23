@@ -51,6 +51,24 @@ pip install -r requirements.txt
 
 ---
 
+## First Run
+
+After cloning the repository, the required working folders are already included:
+
+- input/
+- processing/
+- temp/
+- output/
+- input_archive/
+- input_error/
+- logs/
+
+Simply place your videos inside the `input` folder and run:
+
+```bash
+python blurGPT.py
+```
+
 # Usage
 
 Place one or more videos inside the `input` folder.

@@ -10,10 +10,12 @@ All notable changes to this project will be documented in this file.
 - Motion prediction system between YOLO detections.
 - Internal motion vector calculation (dx, dy, dw, dh).
 - Detector architecture prepared for predictive tracking.
+- Folders of the architeture that was missing at github
 
 ### Changed
 - Detector refactored to support motion estimation.
 - Detection pipeline prepared for future tracking improvements.
+
 
 ---
 
