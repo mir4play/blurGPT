@@ -58,8 +58,8 @@ CLASSES = {
 # 1 = todos os frames
 # 2 = metade dos frames
 # 3 = um a cada três
-FACE_DETECT_EVERY = 2
-PLATE_DETECT_EVERY = 2
+FACE_DETECT_EVERY = 1
+PLATE_DETECT_EVERY = 1
 FACE_IMGSZ = 640
 PLATE_IMGSZ = 1280
 

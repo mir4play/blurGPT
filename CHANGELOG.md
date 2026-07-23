@@ -16,6 +16,14 @@ All notable changes to this project will be documented in this file.
 - Detector refactored to support motion estimation.
 - Detection pipeline prepared for future tracking improvements.
 
+### Known Limitation
+
+The current motion prediction assumes that object detections keep the same order between consecutive YOLO inference frames.
+
+If the detector changes the order of detections, or if objects appear/disappear between inference frames, the predicted motion may be assigned to the wrong object, causing temporary bounding box jumps.
+
+This limitation will be addressed in a future version by introducing object tracking (IoU matching or a dedicated tracker such as ByteTrack/BoT-SORT).
+
 
 ---
 

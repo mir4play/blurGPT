@@ -126,12 +126,12 @@ def main():
             if not ret:
                 break
 
-            face_boxes = face_detector.detect(frame, stats)
-            plate_boxes = plate_detector.detect(frame, stats)
+            face_detections = face_detector.detect(frame, stats)
+            plate_detections = plate_detector.detect(frame, stats)
 
             pixelate(
                 frame=frame,
-                boxes=face_boxes,
+                detections=face_detections,
                 target_class=CLASSES["face"],
                 pixel_size=PIXEL_SIZE,
                 stats=stats,
@@ -140,7 +140,7 @@ def main():
 
             pixelate(
                 frame=frame,
-                boxes=plate_boxes,
+                detections=plate_detections,
                 target_class=CLASSES["plate"],
                 pixel_size=PIXEL_SIZE,
                 stats=stats,

@@ -4,7 +4,7 @@ import cv2
 
 def pixelate(
     frame,
-    boxes,
+    detections,
     target_class,
     pixel_size,
     stats=None,
@@ -18,8 +18,8 @@ def pixelate(
     frame : numpy.ndarray
         Frame do vídeo.
 
-    boxes : ultralytics.engine.results.Boxes
-        Caixas retornadas pela YOLO.
+    detections : list[Detection]
+    BlurGPT internal detections.
 
     target_class : int
         Classe que será pixelizada.
@@ -34,29 +34,30 @@ def pixelate(
         Margem extra ao redor da caixa.
     """
 
-    if boxes is None:
+    if not detections:
         return frame
 
     t0 = time.perf_counter()
 
     frame_h, frame_w = frame.shape[:2]
 
-    for box in boxes:
+    for detection in detections:
 
-        cls = int(box.cls.item())
-
-        if cls != target_class:
+        if detection.cls != target_class:
             continue
 
-        x1, y1, x2, y2 = map(int, box.xyxy[0])
+        x1 = int(detection.x1)
+        y1 = int(detection.y1)
+        x2 = int(detection.x2)
+        y2 = int(detection.y2)
 
-        # Expande a caixa
+        # Expand box
         x1 -= margin
         y1 -= margin
         x2 += margin
         y2 += margin
 
-        # Mantém dentro da imagem
+        # Keep inside image
         x1 = max(0, x1)
         y1 = max(0, y1)
         x2 = min(frame_w, x2)
@@ -86,7 +87,7 @@ def pixelate(
 
         frame[y1:y2, x1:x2] = pixel
 
-    if stats is not None:
-        stats.tempo_pixel += time.perf_counter() - t0
+        if stats is not None:
+            stats.tempo_pixel += time.perf_counter() - t0
 
     return frame
