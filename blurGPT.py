@@ -26,6 +26,7 @@ from core.video import VideoProcessor
 # Ambiente
 # ==========================
 
+print(f"blurGPT............. {VERSION}")
 print(f"PyTorch............. {torch.__version__}")
 
 if torch.cuda.is_available():
@@ -101,18 +102,11 @@ def main():
         # Detectors
         # ==========================
 
-        face_detector = Detector(
-            FACE_MODEL,
+        detector = Detector(
+            MODEL_PATH,
             DEVICE,
-            FACE_DETECT_EVERY,
-            FACE_IMGSZ
-        )
-
-        plate_detector = Detector(
-            PLATE_MODEL,
-            DEVICE,
-            PLATE_DETECT_EVERY,
-            PLATE_IMGSZ
+            DETECT_EVERY,
+            IMGSZ
         )
 
         # ==========================
@@ -126,22 +120,11 @@ def main():
             if not ret:
                 break
 
-            face_detections = face_detector.detect(frame, stats)
-            plate_detections = plate_detector.detect(frame, stats)
+            detections = detector.detect(frame, stats)
 
             pixelate(
                 frame=frame,
-                detections=face_detections,
-                target_class=CLASSES["face"],
-                pixel_size=PIXEL_SIZE,
-                stats=stats,
-                margin=BOX_MARGIN
-            )
-
-            pixelate(
-                frame=frame,
-                detections=plate_detections,
-                target_class=CLASSES["plate"],
+                detections=detections,
                 pixel_size=PIXEL_SIZE,
                 stats=stats,
                 margin=BOX_MARGIN

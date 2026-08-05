@@ -26,11 +26,9 @@ AUTHOR = "Adler Nicolau"
 # MODELOS
 # ==========================================================
 
-# Modelo principal (faces) Yolo26s
-FACE_MODEL = "models/yolo26s.pt"
+# Unique model path
+MODEL_PATH = "models/blurGPT.pt"
 
-# Modelo de placas YOLOv8
-PLATE_MODEL = "models/platesYOLOv8.pt"
 
 # ==========================================================
 # DISPOSITIVO
@@ -58,10 +56,8 @@ CLASSES = {
 # 1 = todos os frames
 # 2 = metade dos frames
 # 3 = um a cada três
-FACE_DETECT_EVERY = 1
-PLATE_DETECT_EVERY = 1
-FACE_IMGSZ = 640
-PLATE_IMGSZ = 1280
+DETECT_EVERY = 5
+IMGSZ = 960
 
 # ==========================================================
 # PIXELIZAÇÃO

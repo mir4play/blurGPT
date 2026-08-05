@@ -1,6 +1,6 @@
 # BlurGPT
 
-BlurGPT is a GPU-accelerated video anonymization tool that automatically detects and pixelates faces and license plates using YOLO models.
+BlurGPT is a GPU-accelerated video anonymization tool focused on fast offline processing of Full HD videos using YOLO-based object detection and motion prediction.
 
 ---
 
@@ -14,6 +14,29 @@ BlurGPT is a GPU-accelerated video anonymization tool that automatically detects
 - 📊 Processing statistics
 - ⏳ Progress bar
 - 🧩 Modular architecture
+
+# Motion Prediction
+
+BlurGPT includes an internal MotionPredictor that estimates object positions between YOLO detections.
+
+Instead of performing object detection on every frame, detections can be reused for a configurable number of frames, significantly reducing GPU workload while maintaining excellent visual quality.
+
+### Recommended configuration
+
+```python
+DETECT_EVERY = 5
+```
+
+This value was selected after benchmarking several configurations and provides the best balance between:
+
+- processing speed
+- GPU usage
+- visual quality
+- implementation simplicity
+
+For detailed benchmarks and design decisions, see:
+
+- `docs/performance.md`
 
 ---
 
@@ -78,17 +101,21 @@ input/
     video1.mp4
     video2.mp4
     video3.mp4
+```
+
+Run:
+
 ```bash
 python blurGPT.py
 ```
 
 BlurGPT will automatically:
 
-Scan the `input` folder.
-Move videos to processing.
-Process them one by one.
-Save the anonymized videos into `output`.
-Archive the original videos into `input_archive`.
+- Scan the `input` folder
+- Move videos to `processing`
+- Process them one by one
+- Save anonymized videos into `output`
+- Archive originals into `input_archive`
 
 Interrupted jobs are automatically resumed from the `processing` folder on the next execution.
 
@@ -101,10 +128,19 @@ BlurGPT/
 
 ├── core/
 │   ├── detector.py
+│   ├── detection.py
 │   ├── jobmanager.py
+│   ├── motion.py
 │   ├── pixelate.py
 │   ├── report.py
 │   └── video.py
+│
+├── docs/
+│   ├── architecture.md
+│   ├── performance.md
+│   └── roadmap.md
+│
+├── models/
 │
 ├── input/
 ├── processing/
@@ -114,13 +150,19 @@ BlurGPT/
 ├── input_error/
 ├── logs/
 │
-├── models/
-│
 ├── blurGPT.py
 ├── config.py
 ├── requirements.txt
+├── CHANGELOG.md
 └── README.md
 ```
+# Documentation
+
+Additional technical documentation is available in the `docs` folder.
+
+- `docs/performance.md` — Motion Predictor benchmarks and performance tests
+- `docs/architecture.md` — Internal project architecture
+- `docs/roadmap.md` — Planned features and future improvements
 
 # Processing Workflow
 
@@ -184,32 +226,30 @@ BlurGPT currently uses two YOLO models.
 
 Current version: **0.4.0**
 
-Implemented:
+### Implemented
 
 - ✅ Face anonymization
 - ✅ License plate anonymization
 - ✅ CUDA acceleration
 - ✅ Batch video processing
-- ✅ Automatic input folder scanning
 - ✅ Automatic workflow
 - ✅ Safe temporary output
-- ✅ Progress bar
-- ✅ Performance report
-- ✅ Modular architecture
+- ✅ Progress reporting
 - ✅ Motion Prediction
+- ✅ Modular architecture
 
-Upcoming:
+### Planned
 
-- ⏳ Automatic error recovery
+- ⏳ Error recovery
 - ⏳ Processing logs
-- ⏳ Detector performance optimizations
-- ⏳ Additional anonymization methods
+- ⏳ New Trained Models
+- ⏳ New anonymization methods
 - ⏳ GUI
 
 # Technologies
 
 - Python
-- OpenCV - Video processing and frame manipulation
-- Ultralytics YOLO - Object detection
-- PyTorch - Deep learning inference
-- CUDA - GPU acceleration
+- OpenCV — Video processing
+- Ultralytics YOLO — Object detection
+- PyTorch — Deep learning inference
+- CUDA — GPU acceleration

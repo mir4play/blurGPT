@@ -33,19 +33,21 @@ class MotionPredictor:
 
         self.motion = []
 
-        for prev, curr in zip(self.previous_detections, self.last_detections):
+        pairs = self.match_detections()
 
-            pcx = (prev.x1 + prev.x2) / 2
-            pcy = (prev.y1 + prev.y2) / 2
+        for prev, curr in pairs:
 
-            ccx = (curr.x1 + curr.x2) / 2
-            ccy = (curr.y1 + curr.y2) / 2
+            pcx = prev.cx
+            pcy = prev.cy
 
-            pw = prev.x2 - prev.x1
-            ph = prev.y2 - prev.y1
+            ccx = curr.cx
+            ccy = curr.cy
 
-            cw = curr.x2 - curr.x1
-            ch = curr.y2 - curr.y1
+            pw = prev.width
+            ph = prev.height
+
+            cw = curr.width
+            ch = curr.height
 
             dx = (ccx - pcx) / self.detect_every
             dy = (ccy - pcy) / self.detect_every
@@ -61,6 +63,7 @@ class MotionPredictor:
         Predicts object positions between YOLO detections
         using linear motion estimation.
         """
+
         if self.motion is None:
             return self.last_detections
 
@@ -73,14 +76,24 @@ class MotionPredictor:
             self.motion
         ):
 
-            x1 = detection.x1 + dx * n
-            y1 = detection.y1 + dy * n
+            # Predict center
+            cx = detection.cx + dx * n
+            cy = detection.cy + dy * n
 
-            x2 = detection.x2 + dx * n
-            y2 = detection.y2 + dy * n
+            # Predict size
+            w = detection.width
+            h = detection.height
 
-            x2 += dw * n
-            y2 += dh * n
+            # Avoid invalid sizes
+            w = max(1.0, w)
+            h = max(1.0, h)
+
+            # Rebuild bounding box
+            x1 = cx - w / 2
+            y1 = cy - h / 2
+
+            x2 = cx + w / 2
+            y2 = cy + h / 2
 
             predicted.append(
 
@@ -118,3 +131,37 @@ class MotionPredictor:
             return self.last_detections
 
         return self.predict_detections()
+
+    def match_detections(self):
+        """
+        Matches current detections with previous detections
+        using the nearest center distance.
+        """
+
+        pairs = []
+
+        unused_previous = self.previous_detections.copy()
+
+        for curr in self.last_detections:
+
+            if not unused_previous:
+                break
+
+            best = None
+            best_distance = float("inf")
+
+            for prev in unused_previous:
+
+                dx = prev.cx - curr.cx
+                dy = prev.cy - curr.cy
+
+                distance = dx * dx + dy * dy
+
+                if distance < best_distance:
+                    best_distance = distance
+                    best = prev
+
+            pairs.append((best, curr))
+            unused_previous.remove(best)
+
+        return pairs

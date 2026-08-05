@@ -5,13 +5,12 @@ import cv2
 def pixelate(
     frame,
     detections,
-    target_class,
     pixel_size,
     stats=None,
     margin=0
 ):
     """
-    Pixeliza todas as detecções da classe desejada.
+    Pixeliza todas as detecções.
 
     Parameters
     ----------
@@ -19,10 +18,7 @@ def pixelate(
         Frame do vídeo.
 
     detections : list[Detection]
-    BlurGPT internal detections.
-
-    target_class : int
-        Classe que será pixelizada.
+        Detecções do BlurGPT.
 
     pixel_size : int
         Intensidade da pixelização.
@@ -42,9 +38,6 @@ def pixelate(
     frame_h, frame_w = frame.shape[:2]
 
     for detection in detections:
-
-        if detection.cls != target_class:
-            continue
 
         x1 = int(detection.x1)
         y1 = int(detection.y1)
@@ -87,7 +80,7 @@ def pixelate(
 
         frame[y1:y2, x1:x2] = pixel
 
-        if stats is not None:
-            stats.tempo_pixel += time.perf_counter() - t0
+    if stats is not None:
+        stats.tempo_pixel += time.perf_counter() - t0
 
     return frame
