@@ -57,7 +57,7 @@ CLASSES = {
 # 2 = metade dos frames
 # 3 = um a cada três
 DETECT_EVERY = 5
-IMGSZ = 960
+IMGSZ = 640
 
 # ==========================================================
 # PIXELIZAÇÃO

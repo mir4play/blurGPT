@@ -4,36 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [0.4.0] - In Progress
+## [0.4.0] - 2026-08-05
 
 ### Added
-- Motion prediction system between YOLO detections.
+- Motion prediction between YOLO detections.
 - Internal motion vector calculation (dx, dy, dw, dh).
-- Detector architecture prepared for predictive tracking.
 - Internal `Detection` class to decouple BlurGPT from Ultralytics.
-- MotionPredictor module for linear interpolation between YOLO detections.
+- `MotionPredictor` module for linear interpolation between detections.
 - Configurable `detect_every` option to reduce inference frequency.
-- Folders of the architeture that was missing at github
+- Project architecture documentation.
+- Performance documentation.
+- Development roadmap.
 
 ### Changed
-- Detector refactored to support motion estimation.
-- Detection pipeline prepared for future tracking improvements.
-- Detector now returns internal Detection objects.
-- Pixelation pipeline updated to use Detection objects.
-- Motion prediction extracted into its own class.
+- Detection pipeline refactored to use internal `Detection` objects.
+- Pixelation pipeline updated to use the new detection abstraction.
+- Motion prediction extracted into its own module.
+- Default detection model updated to the new BlurGPT model.
+- Detection pipeline optimized for reduced inference frequency.
 
 ### Performance
-- Recommended detect_every value: 5.
-- Approximately 2× processing speed compared to detect_every=1 while maintaining acceptable visual quality.
+- Recommended configuration:
+  - `detect_every = 5`
+  - `imgsz = 640`
+- Significantly reduced YOLO inference time.
+- Improved overall processing speed while maintaining acceptable visual quality.
 
-### Known Limitation
-
-The current motion prediction assumes that object detections keep the same order between consecutive YOLO inference frames.
-
-If the detector changes the order of detections, or if objects appear/disappear between inference frames, the predicted motion may be assigned to the wrong object, causing temporary bounding box jumps.
-
-This limitation will be addressed in a future version by introducing object tracking (IoU matching or a dedicated tracker such as ByteTrack/BoT-SORT).
-
+### Known Limitations
+- Motion prediction assumes that object detections preserve their order between consecutive YOLO inference frames.
+- If detections change order, or objects appear/disappear between inference frames, temporary bounding-box jumps may occur.
+- This limitation is planned to be solved in a future release using object tracking (IoU matching or a tracker such as ByteTrack or BoT-SORT).
 
 ---
 
