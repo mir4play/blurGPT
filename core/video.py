@@ -12,13 +12,17 @@ class VideoProcessor:
         input_video,
         output_video,
         codec="mp4v",
-        encoder="opencv"
+        encoder="opencv",
+        nvenc_cq=23,
+        nvenc_preset="p4"
     ):
 
         self.input_video = input_video
         self.output_video = output_video
         self.codec = codec
         self.encoder = encoder
+        self.nvenc_cq = nvenc_cq
+        self.nvenc_preset = nvenc_preset
         self.writer = None
         self.ffmpeg = None
         self.write_backend = "opencv"
@@ -80,8 +84,8 @@ class VideoProcessor:
             "-i", "-",
             "-an",
             "-c:v", "h264_nvenc",
-            "-preset", "p4",
-            "-cq", "23",
+            "-preset", self.nvenc_preset,
+            "-cq", str(self.nvenc_cq),
             "-pix_fmt", "yuv420p",
             "-y",
             self.output_video,
