@@ -44,7 +44,7 @@ temp/
 output/
 ```
 
-After a successful job, the original input is moved to `input_archive/`. A failed job can be moved to `input_error/` by the job-management workflow.
+After a successful job, the original input is moved to `input_archive/`.
 
 ---
 
@@ -135,7 +135,7 @@ input/
 └── video3.mp4
 ```
 
-BlurGPT will process jobs one at a time. Videos found in `processing/` have priority over new videos in `input/`, allowing interrupted jobs to be resumed on the next execution.
+BlurGPT will process jobs one at a time. Videos found in `processing/` have priority over new videos in `input/`, allowing an interrupted job to be picked up on the next execution.
 
 ---
 
