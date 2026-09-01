@@ -8,7 +8,6 @@
 # This program gets the video in input folder, and pixelate plates and faces exporting videos to output folder.
 # ==========================
 
-
 from config import *
 
 import torch
@@ -19,7 +18,6 @@ from core.jobmanager import JobManager
 from core.pixelate import pixelate
 from core.report import Stats, print_report
 from core.video import VideoProcessor
-
 
 
 # ==========================
@@ -39,6 +37,7 @@ else:
     )
 
 print()
+
 
 def main():
 
@@ -72,25 +71,16 @@ def main():
         print("=" * 60)
         print()
 
-        # ==========================
-        # Statistics
-        # ==========================
-
         stats = Stats()
-
-        # ==========================
-        # Video
-        # ==========================
 
         video = VideoProcessor(
             manager.get_processing_path(job),
             manager.get_temp_output_path(job),
-            VIDEO_CODEC
+            VIDEO_CODEC,
+            VIDEO_ENCODER,
+            VIDEO_NVENC_CQ,
+            VIDEO_NVENC_PRESET
         )
-
-        # ==========================
-        # Progress Bar
-        # ==========================
 
         progress = tqdm(
             total=video.total_frames,
@@ -98,20 +88,12 @@ def main():
             unit="frame"
         )
 
-        # ==========================
-        # Detectors
-        # ==========================
-
         detector = Detector(
             MODEL_PATH,
             DEVICE,
             DETECT_EVERY,
             IMGSZ
         )
-
-        # ==========================
-        # Frame loop
-        # ==========================
 
         while True:
 
