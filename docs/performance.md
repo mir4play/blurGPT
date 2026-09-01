@@ -1,18 +1,18 @@
 # Performance Benchmarks
 
-This document records the benchmark used to evaluate BlurGPT's motion-prediction interval.
+This document records the benchmark used to evaluate BlurGPT's motion-prediction interval and the subsequent end-to-end performance audit.
 
 ## Test workload
 
 - Resolution: **1920 × 1080**
-- Frame rate: **60 FPS**
+- Frame rate: **59.94 FPS / approximately 60 FPS**
 - Total frames: **3,597**
 
 The benchmark compares different values of `DETECT_EVERY`.
 
 > **Important:** FPS results are measurements from the original benchmark environment. They should not be treated as universal performance figures. GPU, CPU, driver, PyTorch, video codec and workload characteristics can materially change throughput.
 
-## Results
+## Motion-prediction results
 
 | `DETECT_EVERY` | Processing FPS | Visual quality | Assessment |
 |---:|---:|---|---|
@@ -23,9 +23,44 @@ The benchmark compares different values of `DETECT_EVERY`.
 
 The benchmark indicates that reducing YOLO frequency can substantially increase throughput. The gain is not linear because the remaining work—video decoding, pixelation, encoding and Python-side processing—still consumes time.
 
-## Recommended configuration
+## End-to-end audit
 
-The current default is:
+A separate end-to-end test using the feature branch measured approximately **32.5 FPS** for the complete processing pipeline:
+
+- YOLO: **39.29 s**
+- Pixelation: **0.29 s**
+- Video recording: **49.30 s**
+- Total: **110.66 s**
+- Frames: **3,597**
+
+The result is important because the detector-only benchmark can make the optimization target appear to be YOLO. In the actual pipeline, video recording was the larger individual timed component.
+
+Therefore, after `DETECT_EVERY = 5`, the highest-value optimization target is video encoding rather than a more sophisticated tracker.
+
+## Current optimization
+
+The performance-audit branch adds an optional FFmpeg pipe using NVIDIA's `h264_nvenc` encoder. This moves H.264 encoding from the CPU/OpenCV `mp4v` path to the NVIDIA hardware encoder.
+
+Default configuration:
+
+```python
+VIDEO_ENCODER = "h264_nvenc"
+VIDEO_NVENC_CQ = 23
+VIDEO_NVENC_PRESET = "p4"
+```
+
+The legacy path remains available:
+
+```python
+VIDEO_ENCODER = "opencv"
+VIDEO_CODEC = "mp4v"
+```
+
+This change must be benchmarked on the user's actual machine before claiming a specific FPS improvement. The objective is to reduce the recording component observed in the end-to-end profile; it is not assumed in advance that encoding is the only remaining bottleneck.
+
+## Recommended detection configuration
+
+The current default remains:
 
 ```python
 DETECT_EVERY = 5
@@ -38,7 +73,7 @@ This is a project-level default, not a guarantee that five is optimal for every 
 
 ## What the benchmark does not measure
 
-The benchmark is focused on the detector interval and motion-prediction behaviour. It does not establish a universal real-time capability, nor does it compare every possible YOLO model, resolution, GPU or codec.
+The original benchmark does not establish a universal real-time capability, nor does it compare every possible YOLO model, resolution, GPU or codec.
 
 For reproducible future comparisons, record at least:
 
@@ -51,7 +86,7 @@ For reproducible future comparisons, record at least:
 - number of frames
 - `DETECT_EVERY`
 - `IMGSZ`
-- output codec
+- output encoder and codec
 
 ## Motion-prediction design notes
 
@@ -62,7 +97,7 @@ Several interpolation strategies were considered during development:
 - dynamic bounding-box scaling
 - fixed bounding-box size
 
-The current implementation uses linear motion prediction based primarily on changes between detector results. Bounding-box center movement and size changes are calculated and used to predict intermediate positions.
+The current implementation uses lightweight linear center-motion prediction between detector results. It intentionally does not add a full multi-object tracker in this performance step.
 
 The benchmark suggested that the main quality limitation was perspective and object-motion behaviour rather than simply the interpolation formula.
 
@@ -70,24 +105,34 @@ The benchmark suggested that the main quality limitation was perspective and obj
 
 A tracker such as ByteTrack or BoT-SORT could provide persistent object identities and more robust matching between detector calls. However, introducing a tracker increases implementation and tuning complexity.
 
-The current project therefore keeps motion prediction deliberately lightweight and postpones full object tracking until it provides a clear benefit for anonymization quality.
+The current project keeps motion prediction deliberately lightweight because `DETECT_EVERY = 5` already delivered the measured quality/performance balance. A more complex tracker should only be introduced when a benchmark demonstrates a meaningful anonymization-quality or end-to-end performance gain.
 
 ## Interpreting the results
 
-The key trade-off is:
-
 ```text
-More YOLO inference
+Reduce YOLO frequency
         ↓
-Higher detection cost
-        ↓
-Potentially better temporal accuracy
-
-Less YOLO inference
+Less detector work
         ↓
 Higher throughput
+
+Then profile the whole pipeline
         ↓
-Greater dependence on prediction quality
+Find the next dominant component
+        ↓
+Optimize that component
 ```
 
-`DETECT_EVERY = 5` is the current compromise between these two extremes.
+For the current benchmark, this led to the following sequence:
+
+```text
+DETECT_EVERY = 5
+        ↓
+Good quality / major YOLO reduction
+        ↓
+No demonstrated benefit from heavier tracking
+        ↓
+Video recording becomes a major bottleneck
+        ↓
+Use NVENC hardware encoding
+```
