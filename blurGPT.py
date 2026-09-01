@@ -8,6 +8,7 @@
 # This program gets the video in input folder, and pixelates plates and faces exporting videos to output folder.
 # ==========================
 
+import config
 from config import *
 
 import torch
@@ -134,7 +135,7 @@ def main():
             job.filename,
             stats,
             video,
-            __import__("config")
+            config
         )
 
     print()
