@@ -4,11 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Documentation
+
+- Audited the README against the current runtime implementation.
+- Corrected the model documentation: the current runtime uses one YOLO model for both face and license-plate classes.
+- Documented the actual job-processing lifecycle and supported video extensions.
+- Documented the current configuration defaults.
+- Expanded the architecture documentation to describe module responsibilities and data flow.
+- Clarified the scope and limitations of the performance benchmark.
+- Updated the roadmap so completed work is no longer presented as future work.
+- Added a note that no open-source license is currently declared in the repository.
+
+> This entry is documentation-only and does **not** change the application version.
+
+---
+
 ## [0.4.0] - 2026-08-05
 
 ### Added
+
 - Motion prediction between YOLO detections.
-- Internal motion vector calculation (dx, dy, dw, dh).
+- Internal motion vector calculation (`dx`, `dy`, `dw`, `dh`).
 - Internal `Detection` class to decouple BlurGPT from Ultralytics.
 - `MotionPredictor` module for linear interpolation between detections.
 - Configurable `detect_every` option to reduce inference frequency.
@@ -17,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Development roadmap.
 
 ### Changed
+
 - Detection pipeline refactored to use internal `Detection` objects.
 - Pixelation pipeline updated to use the new detection abstraction.
 - Motion prediction extracted into its own module.
@@ -24,6 +43,7 @@ All notable changes to this project will be documented in this file.
 - Detection pipeline optimized for reduced inference frequency.
 
 ### Performance
+
 - Recommended configuration:
   - `detect_every = 5`
   - `imgsz = 640`
@@ -31,15 +51,17 @@ All notable changes to this project will be documented in this file.
 - Improved overall processing speed while maintaining acceptable visual quality.
 
 ### Known Limitations
-- Motion prediction assumes that object detections preserve their order between consecutive YOLO inference frames.
-- If detections change order, or objects appear/disappear between inference frames, temporary bounding-box jumps may occur.
-- This limitation is planned to be solved in a future release using object tracking (IoU matching or a tracker such as ByteTrack or BoT-SORT).
+
+- Motion prediction depends on matching detections between consecutive YOLO inference frames.
+- If detections change order, objects appear/disappear, or matching becomes ambiguous, temporary bounding-box jumps may occur.
+- Future tracking improvements are planned to make temporal association more robust.
 
 ---
 
 ## [0.3.1] - 2026-07-22
 
 ### Added
+
 - Batch processing.
 - Automatic input folder scanning.
 - JobManager module.
@@ -48,6 +70,7 @@ All notable changes to this project will be documented in this file.
 - Temporary output workflow.
 
 ### Changed
+
 - Video processing now uses a job-based workflow.
 
 ---
@@ -55,6 +78,7 @@ All notable changes to this project will be documented in this file.
 ## [0.3.0] - 2026-07-21
 
 ### Added
+
 - Automated processing workflow.
 - Project modularization.
 
@@ -63,6 +87,7 @@ All notable changes to this project will be documented in this file.
 ## [0.2.0]
 
 ### Added
+
 - Face detection.
 - License plate detection.
 - Pixelation.

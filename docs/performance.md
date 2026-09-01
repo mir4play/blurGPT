@@ -1,74 +1,93 @@
-# Motion Predictor Benchmarks
+# Performance Benchmarks
 
-Test video
+This document records the benchmark used to evaluate BlurGPT's motion-prediction interval.
 
-- 1920x1080
-- 60 FPS
-- 3597 frames
+## Test workload
 
----
+- Resolution: **1920 × 1080**
+- Frame rate: **60 FPS**
+- Total frames: **3,597**
 
-## detect_every = 1
+The benchmark compares different values of `DETECT_EVERY`.
 
-FPS: 31.8
+> **Important:** FPS results are measurements from the original benchmark environment. They should not be treated as universal performance figures. GPU, CPU, driver, PyTorch, video codec and workload characteristics can materially change throughput.
 
-Visual quality:
-★★★★★
+## Results
 
----
+| `DETECT_EVERY` | Processing FPS | Visual quality | Assessment |
+|---:|---:|---|---|
+| 1 | 31.8 | ★★★★★ | YOLO on every frame; highest detection frequency |
+| 5 | 61.1 | ★★★★★ | **Recommended balance** |
+| 10 | 70.1 | ★★★☆☆ | Minor prediction errors |
+| 20 | 75.8 | ★☆☆☆☆ | Prediction errors become unacceptable |
 
-## detect_every = 5
+The benchmark indicates that reducing YOLO frequency can substantially increase throughput. The gain is not linear because the remaining work—video decoding, pixelation, encoding and Python-side processing—still consumes time.
 
-FPS: 61.1
+## Recommended configuration
 
-Visual quality:
-★★★★★
+The current default is:
 
-Recommended value.
+```python
+DETECT_EVERY = 5
+IMGSZ = 640
+```
 
----
+`DETECT_EVERY = 5` was selected because the benchmark retained the same five-star visual-quality assessment while approximately doubling measured processing FPS relative to detection on every frame.
 
-## detect_every = 10
+This is a project-level default, not a guarantee that five is optimal for every video or hardware configuration.
 
-FPS: 70.1
+## What the benchmark does not measure
 
-Visual quality:
-★★★☆☆
+The benchmark is focused on the detector interval and motion-prediction behaviour. It does not establish a universal real-time capability, nor does it compare every possible YOLO model, resolution, GPU or codec.
 
-Minor prediction errors.
+For reproducible future comparisons, record at least:
 
----
+- GPU model
+- CPU model
+- Python version
+- PyTorch version
+- Ultralytics version
+- input resolution and FPS
+- number of frames
+- `DETECT_EVERY`
+- `IMGSZ`
+- output codec
 
-## detect_every = 20
+## Motion-prediction design notes
 
-FPS: 75.8
+Several interpolation strategies were considered during development:
 
-Visual quality:
-★☆☆☆☆
+- corner interpolation
+- center interpolation
+- dynamic bounding-box scaling
+- fixed bounding-box size
 
-Prediction errors become unacceptable.
+The current implementation uses linear motion prediction based primarily on changes between detector results. Bounding-box center movement and size changes are calculated and used to predict intermediate positions.
 
-# Design Notes
+The benchmark suggested that the main quality limitation was perspective and object-motion behaviour rather than simply the interpolation formula.
 
-During the development of the MotionPredictor, several interpolation strategies were evaluated:
+## Why not a full tracker yet?
 
-- Corner interpolation
-- Center interpolation
-- Dynamic bounding box scaling
-- Fixed bounding box size
+A tracker such as ByteTrack or BoT-SORT could provide persistent object identities and more robust matching between detector calls. However, introducing a tracker increases implementation and tuning complexity.
 
-All approaches produced similar behaviour when objects moved toward or away from the camera. The primary limitation was identified as perspective distortion rather than the interpolation method itself.
+The current project therefore keeps motion prediction deliberately lightweight and postpones full object tracking until it provides a clear benefit for anonymization quality.
 
-After benchmarking, the project adopted:
+## Interpreting the results
 
-- Linear motion prediction
-- Recommended `detect_every = 5`
+The key trade-off is:
 
-This configuration provided the best balance between:
+```text
+More YOLO inference
+        ↓
+Higher detection cost
+        ↓
+Potentially better temporal accuracy
 
-- processing speed
-- GPU usage
-- visual quality
-- implementation simplicity
+Less YOLO inference
+        ↓
+Higher throughput
+        ↓
+Greater dependence on prediction quality
+```
 
-More complex tracking algorithms (Kalman Filter, optical flow, etc.) were intentionally postponed because they introduce significantly higher implementation complexity while providing limited benefit for the current goals of the project.
+`DETECT_EVERY = 5` is the current compromise between these two extremes.
