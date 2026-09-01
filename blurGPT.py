@@ -12,9 +12,10 @@ import config
 from config import *
 
 import torch
+from datetime import datetime, timezone
 from tqdm import tqdm
 
-from core.benchmark import write_benchmark
+from core.benchmark import collect_environment, write_benchmark
 from core.detector import Detector
 from core.jobmanager import JobManager
 from core.pixelate import pixelate
@@ -53,6 +54,8 @@ def main():
 
     total_jobs = len(jobs)
     current_job = 0
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    environment = collect_environment()
 
     while True:
 
@@ -135,7 +138,9 @@ def main():
             job.filename,
             stats,
             video,
-            config
+            config,
+            run_id,
+            environment
         )
 
     print()
