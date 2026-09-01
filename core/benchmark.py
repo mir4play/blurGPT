@@ -25,7 +25,7 @@ def _ffmpeg_version():
         return "not available"
 
 
-def _environment():
+def collect_environment():
     gpu = None
     if torch.cuda.is_available():
         gpu = torch.cuda.get_device_name(0)
@@ -40,11 +40,12 @@ def _environment():
     }
 
 
-def write_benchmark(video_name, stats, video, config):
+def write_benchmark(video_name, stats, video, config, run_id, environment):
     """Append one structured processing record to the benchmark history."""
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     record = {
+        "run_id": run_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "video": video_name,
         "frames": stats.frames,
@@ -62,8 +63,11 @@ def write_benchmark(video_name, stats, video, config):
         "video_codec": config.VIDEO_CODEC,
         "nvenc_cq": config.VIDEO_NVENC_CQ,
         "nvenc_preset": config.VIDEO_NVENC_PRESET,
-        "environment": _environment(),
+        "environment": environment,
     }
 
-    with LOG_PATH.open("a", encoding="utf-8") as log_file:
-        log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    try:
+        with LOG_PATH.open("a", encoding="utf-8") as log_file:
+            log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"Warning: benchmark log could not be written: {exc}")
