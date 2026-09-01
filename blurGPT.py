@@ -1,11 +1,11 @@
 # ==========================
 # BlurGPT
 # ==========================
-# Autor: Adler Nicolau
+# Author: Adler Nicolau
 # Date: 21/07/2026
 #
 # Main program
-# This program gets the video in input folder, and pixelate plates and faces exporting videos to output folder.
+# This program gets the video in input folder, and pixelates plates and faces exporting videos to output folder.
 # ==========================
 
 from config import *
@@ -13,6 +13,7 @@ from config import *
 import torch
 from tqdm import tqdm
 
+from core.benchmark import write_benchmark
 from core.detector import Detector
 from core.jobmanager import JobManager
 from core.pixelate import pixelate
@@ -21,7 +22,7 @@ from core.video import VideoProcessor
 
 
 # ==========================
-# Ambiente
+# Environment
 # ==========================
 
 print(f"blurGPT............. {VERSION}")
@@ -127,6 +128,13 @@ def main():
         print_report(
             stats,
             video
+        )
+
+        write_benchmark(
+            job.filename,
+            stats,
+            video,
+            __import__("config")
         )
 
     print()
