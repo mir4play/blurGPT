@@ -9,6 +9,7 @@ BlurGPT is a GPU-accelerated video anonymization tool for offline processing. It
 ## Features
 
 - 🚀 NVIDIA CUDA acceleration
+- 🎞️ Optional NVIDIA NVENC hardware video encoding
 - 😀 Face detection
 - 🚗 License plate detection
 - 🟪 Pixelation anonymization
@@ -41,6 +42,9 @@ Pixelation
 temp/
    │
    ▼
+Hardware/software encoding
+   │
+   ▼
 output/
 ```
 
@@ -54,8 +58,25 @@ After a successful job, the original input is moved to `input_archive/`.
 - NVIDIA GPU with CUDA support
 - PyTorch installed with CUDA support
 - The Python dependencies listed in `requirements.txt`
+- **FFmpeg with `h264_nvenc` support** when using the recommended hardware encoder
 
 BlurGPT currently requires CUDA at startup. If CUDA is unavailable, the application stops instead of falling back to CPU processing.
+
+### FFmpeg / NVENC
+
+The recommended output path is NVIDIA H.264 hardware encoding through FFmpeg. Verify the encoder is available with:
+
+```bash
+ffmpeg -hide_banner -encoders | findstr nvenc
+```
+
+You should see `h264_nvenc` in the encoder list. If FFmpeg or NVENC is unavailable, set:
+
+```python
+VIDEO_ENCODER = "opencv"
+```
+
+to use the legacy OpenCV `mp4v` encoder.
 
 ---
 
@@ -151,7 +172,10 @@ Runtime settings are centralized in `config.py`. Important options include:
 | `IMGSZ` | `640` | YOLO inference image size |
 | `PIXEL_SIZE` | `10` | Pixelation block size |
 | `BOX_MARGIN` | `0` | Extra margin around detections |
-| `VIDEO_CODEC` | `mp4v` | OpenCV output codec |
+| `VIDEO_ENCODER` | `h264_nvenc` | Recommended FFmpeg/NVIDIA encoder |
+| `VIDEO_CODEC` | `mp4v` | OpenCV fallback codec |
+| `VIDEO_NVENC_CQ` | `23` | NVENC constant-quality target |
+| `VIDEO_NVENC_PRESET` | `p4` | NVENC performance/quality preset |
 | `SHOW_VIDEO` | `False` | Display frames during processing |
 | `SAVE_VIDEO` | `True` | Enable video output |
 | `SHOW_REPORT` | `True` | Show processing statistics |
@@ -183,9 +207,7 @@ Model training is an active area of development; training datasets and model-gen
 
 ## Motion prediction
 
-`MotionPredictor` estimates object movement between YOLO inference frames. It uses the center displacement and bounding-box size changes between detections and applies linear prediction to intermediate frames.
-
-The current implementation matches detections between inference frames using nearest center distance. It intentionally does not yet implement a full multi-object tracker such as ByteTrack or BoT-SORT.
+`MotionPredictor` estimates object movement between YOLO inference frames. It uses linear center-motion prediction between detections. The current implementation matches detections between inference frames using nearest center distance and intentionally does not implement a full multi-object tracker such as ByteTrack or BoT-SORT.
 
 The benchmarked default is:
 
@@ -194,6 +216,18 @@ DETECT_EVERY = 5
 ```
 
 See [`docs/performance.md`](docs/performance.md) for the benchmark and its limitations.
+
+---
+
+## Performance strategy
+
+The most important performance finding from the project's testing was that reducing YOLO frequency alone does not remove the remaining end-to-end bottleneck. In a 1920×1080/59.94 FPS test, the previously measured end-to-end throughput was about **32.5 FPS**, with approximately **39.3 s spent in YOLO**, **0.3 s in pixelation**, and **49.3 s in video recording** for 3,597 frames.
+
+This means the next optimization target is the video-output path rather than adding increasingly complex tracking algorithms.
+
+The performance branch therefore adds an FFmpeg pipe using `h264_nvenc`, moving H.264 encoding to the NVIDIA GPU. The legacy OpenCV `mp4v` path remains available for compatibility.
+
+No full tracker is introduced in this optimization step: the current `DETECT_EVERY = 5` motion-prediction strategy already provides the measured quality/performance balance, while more elaborate tracking previously added complexity without a demonstrated end-to-end gain.
 
 ---
 
@@ -209,7 +243,7 @@ BlurGPT/
 │   ├── motion.py         # Motion prediction
 │   ├── pixelate.py       # Anonymization
 │   ├── report.py         # Processing statistics
-│   └── video.py          # Video I/O
+│   └── video.py          # Video I/O and encoding
 │
 ├── docs/
 │   ├── architecture.md
@@ -239,7 +273,7 @@ BlurGPT/
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md) — runtime architecture and responsibilities of each module
-- [`docs/performance.md`](docs/performance.md) — motion-prediction benchmarks and interpretation
+- [`docs/performance.md`](docs/performance.md) — performance benchmarks and optimization decisions
 - [`docs/roadmap.md`](docs/roadmap.md) — current development priorities and future work
 - [`CHANGELOG.md`](CHANGELOG.md) — version history
 
@@ -260,12 +294,13 @@ BlurGPT/
 - Motion prediction
 - Modular architecture
 - Internal `Detection` abstraction
+- Optional NVIDIA NVENC video encoding
 
 ### In development / planned
 
 - More robust exception handling and recovery
 - Further batch-processing improvements
-- Improved object tracking between detector calls
+- Improved object tracking between detector calls when justified by measured quality gains
 - Additional anonymization methods
 - GUI
 
@@ -274,10 +309,11 @@ BlurGPT/
 ## Technologies
 
 - **Python** — application language
-- **OpenCV** — video input/output and frame processing
+- **OpenCV** — video input and frame processing
+- **FFmpeg** — optional hardware video encoding
 - **Ultralytics YOLO** — object detection
 - **PyTorch** — deep-learning inference
-- **CUDA** — GPU acceleration
+- **CUDA / NVENC** — GPU acceleration and video encoding
 
 ## License
 
