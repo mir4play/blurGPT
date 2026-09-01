@@ -1,72 +1,98 @@
 # BlurGPT
 
-BlurGPT is a GPU-accelerated video anonymization tool focused on fast offline processing of Full HD videos using YOLO-based object detection and motion prediction.
+BlurGPT is a GPU-accelerated video anonymization tool for offline processing. It uses a YOLO object-detection model to detect faces and license plates, then pixelates the detected regions while preserving the rest of the video.
+
+> **Project status:** active development. The current documented application version is **0.4.0**.
 
 ---
 
-# Features
+## Features
 
-- 🚀 GPU acceleration (CUDA)
+- 🚀 NVIDIA CUDA acceleration
 - 😀 Face detection
 - 🚗 License plate detection
 - 🟪 Pixelation anonymization
-- 📹 Full HD video processing
+- 📹 Batch processing of common video formats
 - 📊 Processing statistics
 - ⏳ Progress bar
 - 🧩 Modular architecture
+- 🔄 Automatic recovery of jobs left in `processing/`
 
-# Motion Prediction
+## How it works
 
-BlurGPT includes an internal MotionPredictor that estimates object positions between YOLO detections.
+BlurGPT processes videos through a job-based pipeline:
 
-Instead of performing object detection on every frame, detections can be reused for a configurable number of frames, significantly reducing GPU workload while maintaining excellent visual quality.
-
-### Recommended configuration
-
-```python
-DETECT_EVERY = 5
+```text
+input/
+   │
+   ▼
+processing/
+   │
+   ▼
+YOLO detection
+   │
+   ▼
+Motion prediction
+   │
+   ▼
+Pixelation
+   │
+   ▼
+temp/
+   │
+   ▼
+output/
 ```
 
-This value was selected after benchmarking several configurations and provides the best balance between:
-
-- processing speed
-- GPU usage
-- visual quality
-- implementation simplicity
-
-For detailed benchmarks and design decisions, see:
-
-- `docs/performance.md`
+After a successful job, the original input is moved to `input_archive/`. A failed job can be moved to `input_error/` by the job-management workflow.
 
 ---
 
-# Installation
+## Requirements
 
-## 1. Create a virtual environment
+- Python **3.13**
+- NVIDIA GPU with CUDA support
+- PyTorch installed with CUDA support
+- The Python dependencies listed in `requirements.txt`
+
+BlurGPT currently requires CUDA at startup. If CUDA is unavailable, the application stops instead of falling back to CPU processing.
+
+---
+
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/mir4play/blurGPT.git
+cd blurGPT
+```
+
+### 2. Create a virtual environment
 
 ```bash
 python -m venv .venv
 ```
 
-## 2. Activate it
+### 3. Activate it
 
-### Windows
+**Windows:**
 
 ```bash
 .venv\Scripts\activate
 ```
 
-## 3. Install PyTorch with CUDA
+### 4. Install PyTorch with CUDA
 
-For NVIDIA GPUs:
+Install the CUDA-enabled PyTorch build appropriate for your system. For the environment currently documented by the project:
 
 ```bash
 python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
 ```
 
-> If you don't have an NVIDIA GPU, install the CPU version of PyTorch from https://pytorch.org.
+If you use another CUDA/PyTorch combination, follow the corresponding official PyTorch installation instructions and verify that `torch.cuda.is_available()` returns `True`.
 
-## 4. Install the remaining dependencies
+### 5. Install BlurGPT dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -74,66 +100,116 @@ pip install -r requirements.txt
 
 ---
 
-## First Run
+## First run
 
-After cloning the repository, the required working folders are already included:
-
-- input/
-- processing/
-- temp/
-- output/
-- input_archive/
-- input_error/
-- logs/
-
-Simply place your videos inside the `input` folder and run:
-
-```bash
-python blurGPT.py
-```
-
-# Usage
-
-Place one or more videos inside the `input` folder.
+The repository contains the working directories used by the application:
 
 ```text
 input/
-    video1.mp4
-    video2.mp4
-    video3.mp4
+processing/
+temp/
+output/
+input_archive/
+input_error/
+logs/
 ```
 
-Run:
+Place one or more supported videos in `input/` and run:
 
 ```bash
 python blurGPT.py
 ```
 
-BlurGPT will automatically:
+Supported video extensions are:
 
-- Scan the `input` folder
-- Move videos to `processing`
-- Process them one by one
-- Save anonymized videos into `output`
-- Archive originals into `input_archive`
+```text
+.mp4  .mov  .avi  .mkv  .m4v  .wmv
+```
 
-Interrupted jobs are automatically resumed from the `processing` folder on the next execution.
+### Example
+
+```text
+input/
+├── video1.mp4
+├── video2.mov
+└── video3.mp4
+```
+
+BlurGPT will process jobs one at a time. Videos found in `processing/` have priority over new videos in `input/`, allowing interrupted jobs to be resumed on the next execution.
 
 ---
 
-# Project Structure
+## Configuration
+
+Runtime settings are centralized in `config.py`. Important options include:
+
+| Setting | Current value | Purpose |
+|---|---:|---|
+| `MODEL_PATH` | `models/blurGPT.pt` | YOLO model used for detection |
+| `DEVICE` | `0` | First CUDA GPU |
+| `DETECT_EVERY` | `5` | Run YOLO once every N frames |
+| `IMGSZ` | `640` | YOLO inference image size |
+| `PIXEL_SIZE` | `10` | Pixelation block size |
+| `BOX_MARGIN` | `0` | Extra margin around detections |
+| `VIDEO_CODEC` | `mp4v` | OpenCV output codec |
+| `SHOW_VIDEO` | `False` | Display frames during processing |
+| `SAVE_VIDEO` | `True` | Enable video output |
+| `SHOW_REPORT` | `True` | Show processing statistics |
+
+`DETECT_EVERY = 5` means YOLO is not executed on every frame. Between detector calls, `MotionPredictor` estimates the object position from the previous detections.
+
+---
+
+## AI model
+
+The current application uses **one YOLO model** for both supported classes:
+
+```text
+models/blurGPT.pt
+```
+
+The current class mapping in `config.py` is:
+
+| Class ID | Class |
+|---:|---|
+| `0` | license plate |
+| `1` | face |
+
+The model is therefore responsible for detecting both faces and license plates in the same inference pipeline.
+
+Model training is an active area of development; training datasets and model-generation experiments are not part of the runtime installation described here.
+
+---
+
+## Motion prediction
+
+`MotionPredictor` estimates object movement between YOLO inference frames. It uses the center displacement and bounding-box size changes between detections and applies linear prediction to intermediate frames.
+
+The current implementation matches detections between inference frames using nearest center distance. It intentionally does not yet implement a full multi-object tracker such as ByteTrack or BoT-SORT.
+
+The benchmarked default is:
+
+```python
+DETECT_EVERY = 5
+```
+
+See [`docs/performance.md`](docs/performance.md) for the benchmark and its limitations.
+
+---
+
+## Project structure
 
 ```text
 BlurGPT/
-
+│
 ├── core/
-│   ├── detector.py
-│   ├── detection.py
-│   ├── jobmanager.py
-│   ├── motion.py
-│   ├── pixelate.py
-│   ├── report.py
-│   └── video.py
+│   ├── detector.py       # YOLO inference and Detection conversion
+│   ├── detection.py      # Internal detection representation
+│   ├── jobmanager.py     # Job discovery and file movement
+│   ├── motion.py         # Motion prediction
+│   ├── pixelate.py       # Anonymization
+│   ├── report.py         # Processing statistics
+│   └── video.py          # Video I/O
 │
 ├── docs/
 │   ├── architecture.md
@@ -141,6 +217,7 @@ BlurGPT/
 │   └── roadmap.md
 │
 ├── models/
+│   └── blurGPT.pt
 │
 ├── input/
 ├── processing/
@@ -156,100 +233,52 @@ BlurGPT/
 ├── CHANGELOG.md
 └── README.md
 ```
-# Documentation
-
-Additional technical documentation is available in the `docs` folder.
-
-- `docs/performance.md` — Motion Predictor benchmarks and performance tests
-- `docs/architecture.md` — Internal project architecture
-- `docs/roadmap.md` — Planned features and future improvements
-
-# Processing Workflow
-
-```text
-input
-    │
-    ▼
-processing
-    │
-    ▼
-temp
-    │
-    ▼
-output
-
-Original video
-        │
-        ▼
-input_archive
-```
----
-
-# AI Models
-
-BlurGPT currently uses two YOLO models.
-
-## Face Detection
-
-**yolo26s.pt**
-
-- Custom-trained by the project author using Ultralytics Cloud.
-- Training resolution: **640 × 640**
-- Training epochs: **20**
-- Dataset: **~19,000 face images**
-- Purpose: **Face detection**
-
-## License Plate Detection
-
-**platesYOLOv8.pt**
-
-- Pre-trained YOLOv8 model.
-- Source:
-  https://huggingface.co/Koushim/yolov8-license-plate-detection
-- Purpose: **License plate detection**
-
-> **Inference Resolution**
->
-> The face detector runs at **640 px**, while the license plate detector runs at **1280 px** to improve the detection of small license plates in Full HD videos.
 
 ---
 
-# Requirements
+## Documentation
 
-- Python 3.13
-- CUDA-compatible NVIDIA GPU (recommended)
-- PyTorch with CUDA support
+- [`docs/architecture.md`](docs/architecture.md) — runtime architecture and responsibilities of each module
+- [`docs/performance.md`](docs/performance.md) — motion-prediction benchmarks and interpretation
+- [`docs/roadmap.md`](docs/roadmap.md) — current development priorities and future work
+- [`CHANGELOG.md`](CHANGELOG.md) — version history
 
 ---
 
-# Current Status
-
-Current version: **0.4.0**
+## Current status
 
 ### Implemented
 
-- ✅ Face anonymization
-- ✅ License plate anonymization
-- ✅ CUDA acceleration
-- ✅ Batch video processing
-- ✅ Automatic workflow
-- ✅ Safe temporary output
-- ✅ Progress reporting
-- ✅ Motion Prediction
-- ✅ Modular architecture
+- Face anonymization
+- License plate anonymization
+- CUDA acceleration
+- Batch video processing
+- Job-based file workflow
+- Temporary output workflow
+- Progress reporting
+- Processing statistics
+- Motion prediction
+- Modular architecture
+- Internal `Detection` abstraction
 
-### Planned
+### In development / planned
 
-- ⏳ Error recovery
-- ⏳ Processing logs
-- ⏳ New Trained Models
-- ⏳ New anonymization methods
-- ⏳ GUI
+- More robust exception handling and recovery
+- Further batch-processing improvements
+- Improved object tracking between detector calls
+- Additional anonymization methods
+- GUI
 
-# Technologies
+---
 
-- Python
-- OpenCV — Video processing
-- Ultralytics YOLO — Object detection
-- PyTorch — Deep learning inference
-- CUDA — GPU acceleration
+## Technologies
+
+- **Python** — application language
+- **OpenCV** — video input/output and frame processing
+- **Ultralytics YOLO** — object detection
+- **PyTorch** — deep-learning inference
+- **CUDA** — GPU acceleration
+
+## License
+
+No open-source license is currently declared in the repository. Unless a license is added, the default copyright rules apply to the project source code.
