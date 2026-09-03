@@ -4,6 +4,7 @@
 # ==========================================================
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -49,6 +50,17 @@ class JobManager:
         self.archive_dir = Path("input_archive")
         self.error_dir = Path("input_error")
         self.logs_dir = Path("logs")
+
+        for folder in (
+            self.input_dir,
+            self.processing_dir,
+            self.temp_dir,
+            self.output_dir,
+            self.archive_dir,
+            self.error_dir,
+            self.logs_dir,
+        ):
+            folder.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------
 
@@ -179,7 +191,7 @@ class JobManager:
 
         job.source = "processing"
 
-        # ------------------------------------------------------
+    # ------------------------------------------------------
 
     def finish(self, job):
         """
@@ -197,3 +209,43 @@ class JobManager:
 
         temp_video.replace(output_video)
         processing_video.replace(archive_video)
+
+    # ------------------------------------------------------
+
+    def fail(self, job, error):
+        """
+        Handles a failed job.
+
+        - Moves the input from processing/ to input_error/
+        - Removes any partial temp output
+        - Appends one line to logs/errors.log
+        """
+
+        processing_video = self.get_processing_path(job)
+        error_video = self.get_error_path(job)
+        temp_video = self.get_temp_output_path(job)
+
+        if processing_video.exists():
+            if error_video.exists():
+                stem = error_video.stem
+                suffix = error_video.suffix
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+                error_video = self.error_dir / f"{stem}_{ts}{suffix}"
+
+            processing_video.replace(error_video)
+
+        if temp_video.exists():
+            try:
+                temp_video.unlink()
+            except OSError:
+                pass
+
+        log_file = self.logs_dir / "errors.log"
+        timestamp = datetime.now(timezone.utc).isoformat()
+        message = f"{timestamp} | {job.filename} | {type(error).__name__}: {error}\n"
+
+        try:
+            with log_file.open("a", encoding="utf-8") as f:
+                f.write(message)
+        except OSError:
+            pass
