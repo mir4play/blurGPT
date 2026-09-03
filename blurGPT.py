@@ -1,19 +1,21 @@
 # ==========================
 # BlurGPT
 # ==========================
-# Autor: Adler Nicolau
+# Author: Adler Nicolau
 # Date: 21/07/2026
 #
 # Main program
-# This program gets the video in input folder, and pixelate plates and faces exporting videos to output folder.
+# This program gets the video in input folder, and pixelates plates and faces exporting videos to output folder.
 # ==========================
 
-
+import config
 from config import *
 
 import torch
+from datetime import datetime, timezone
 from tqdm import tqdm
 
+from core.benchmark import collect_environment, write_benchmark
 from core.detector import Detector
 from core.jobmanager import JobManager
 from core.pixelate import pixelate
@@ -21,9 +23,8 @@ from core.report import Stats, print_report
 from core.video import VideoProcessor
 
 
-
 # ==========================
-# Ambiente
+# Environment
 # ==========================
 
 print(f"blurGPT............. {VERSION}")
@@ -40,6 +41,7 @@ else:
 
 print()
 
+
 def main():
 
     manager = JobManager()
@@ -52,6 +54,8 @@ def main():
 
     total_jobs = len(jobs)
     current_job = 0
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    environment = collect_environment()
 
     while True:
 
@@ -72,25 +76,16 @@ def main():
         print("=" * 60)
         print()
 
-        # ==========================
-        # Statistics
-        # ==========================
-
         stats = Stats()
-
-        # ==========================
-        # Video
-        # ==========================
 
         video = VideoProcessor(
             manager.get_processing_path(job),
             manager.get_temp_output_path(job),
-            VIDEO_CODEC
+            VIDEO_CODEC,
+            VIDEO_ENCODER,
+            VIDEO_NVENC_CQ,
+            VIDEO_NVENC_PRESET
         )
-
-        # ==========================
-        # Progress Bar
-        # ==========================
 
         progress = tqdm(
             total=video.total_frames,
@@ -98,20 +93,12 @@ def main():
             unit="frame"
         )
 
-        # ==========================
-        # Detectors
-        # ==========================
-
         detector = Detector(
             MODEL_PATH,
             DEVICE,
             DETECT_EVERY,
             IMGSZ
         )
-
-        # ==========================
-        # Frame loop
-        # ==========================
 
         while True:
 
@@ -145,6 +132,15 @@ def main():
         print_report(
             stats,
             video
+        )
+
+        write_benchmark(
+            job.filename,
+            stats,
+            video,
+            config,
+            run_id,
+            environment
         )
 
     print()

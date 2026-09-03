@@ -6,7 +6,7 @@ Altere apenas este arquivo para configurar o programa.
 """
 
 #==========================================================
-# PROJECT 
+# PROJECT
 APP_NAME = "BlurGPT"
 VERSION = "0.4.0"
 AUTHOR = "Adler Nicolau"
@@ -28,7 +28,6 @@ AUTHOR = "Adler Nicolau"
 
 # Unique model path
 MODEL_PATH = "models/blurGPT.pt"
-
 
 # ==========================================================
 # DISPOSITIVO
@@ -73,8 +72,17 @@ BOX_MARGIN = 0
 # VÍDEO
 # ==========================================================
 
-# Codec do OpenCV
+# Encoder recomendado para NVIDIA GPUs.
+# Requer FFmpeg instalado e suporte h264_nvenc no driver/NVIDIA GPU.
+# "opencv" mantém o encoder anterior (mp4v).
+VIDEO_ENCODER = "h264_nvenc"
+
+# Codec usado somente quando VIDEO_ENCODER = "opencv"
 VIDEO_CODEC = "mp4v"
+
+# Qualidade NVENC: valores menores = maior qualidade / maior bitrate.
+VIDEO_NVENC_CQ = 23
+VIDEO_NVENC_PRESET = "p4"
 
 # Mostrar vídeo durante processamento
 SHOW_VIDEO = False
