@@ -7,6 +7,16 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.paths import (
+    ARCHIVE_DIR,
+    ERROR_DIR,
+    INPUT_DIR,
+    LOGS_DIR,
+    OUTPUT_DIR,
+    PROCESSING_DIR,
+    TEMP_DIR,
+)
+
 
 @dataclass
 class Job:
@@ -26,13 +36,13 @@ class JobManager:
     )
 
     def __init__(self):
-        self.input_dir = Path("input")
-        self.processing_dir = Path("processing")
-        self.temp_dir = Path("temp")
-        self.output_dir = Path("output")
-        self.archive_dir = Path("input_archive")
-        self.error_dir = Path("input_error")
-        self.logs_dir = Path("logs")
+        self.input_dir = INPUT_DIR
+        self.processing_dir = PROCESSING_DIR
+        self.temp_dir = TEMP_DIR
+        self.output_dir = OUTPUT_DIR
+        self.archive_dir = ARCHIVE_DIR
+        self.error_dir = ERROR_DIR
+        self.logs_dir = LOGS_DIR
 
         for folder in (
             self.input_dir, self.processing_dir, self.temp_dir,
