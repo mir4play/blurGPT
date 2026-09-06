@@ -5,19 +5,21 @@
 
 BlurGPT is a GPU-accelerated video anonymization tool for offline processing. It uses a YOLO object-detection model to detect faces and license plates, then pixelates the detected regions while preserving the rest of the video.
 
-> **Project status:** active development. The current documented application version is **0.4.0**.
+> **Project status:** active development. The current documented application version is **0.5.0**.
 
 ---
 
 ## Features
 
 - 🚀 NVIDIA CUDA acceleration
-- 🎞️ Optional NVIDIA NVENC hardware video encoding
+- 🎞️ NVIDIA NVENC hardware video encoding (OpenCV fallback available)
 - 😀 Face detection
 - 🚗 License plate detection
 - 🟪 Pixelation anonymization
 - 📹 Batch processing of common video formats
-- 📊 Processing statistics
+- 🛡️ Failed jobs routed to `input_error/` without stopping the batch
+- ♻️ YOLO model loaded once and reused across the batch
+- 📊 Processing statistics and `logs/benchmarks.jsonl`
 - ⏳ Progress bar
 - 🧩 Modular architecture
 - 🔄 Automatic recovery of jobs left in `processing/`
@@ -33,10 +35,10 @@ input/
 processing/
    │
    ▼
-YOLO detection
+YOLO detection (every N frames)
    │
    ▼
-Motion prediction
+Motion prediction (center + size, class-aware match)
    │
    ▼
 Pixelation
@@ -52,6 +54,7 @@ output/
 ```
 
 After a successful job, the original input is moved to `input_archive/`.
+On failure, the input is moved to `input_error/` and a line is appended to `logs/errors.log`; the batch continues.
 
 ---
 
@@ -183,7 +186,7 @@ Runtime settings are centralized in `config.py`. Important options include:
 | `SAVE_VIDEO` | `True` | Enable video output |
 | `SHOW_REPORT` | `True` | Show processing statistics |
 
-`DETECT_EVERY = 5` means YOLO is not executed on every frame. Between detector calls, `MotionPredictor` estimates the object position from the previous detections.
+`DETECT_EVERY = 5` means YOLO is not executed on every frame. Between detector calls, `MotionPredictor` estimates object position and size from the previous detections.
 
 ---
 
@@ -210,7 +213,15 @@ Model training is an active area of development; training datasets and model-gen
 
 ## Motion prediction
 
-`MotionPredictor` estimates object movement between YOLO inference frames. It uses linear center-motion prediction between detections. The current implementation matches detections between inference frames using nearest center distance and intentionally does not implement a full multi-object tracker such as ByteTrack or BoT-SORT.
+`MotionPredictor` estimates object movement between YOLO inference frames using linear prediction of **center and size** (`dx`, `dy`, `dw`, `dh`).
+
+Matching between detector calls is **lightweight** (not a full tracker):
+
+- same class only (face↔face, plate↔plate)
+- nearest center within a distance threshold based on the previous box diagonal
+- unmatched objects keep their last known box for the interval
+
+Full trackers (ByteTrack / BoT-SORT / Kalman) were evaluated and are intentionally out of scope for now: high complexity, no measured end-to-end FPS gain on this workload.
 
 The benchmarked default is:
 
@@ -226,11 +237,11 @@ See [`docs/performance.md`](docs/performance.md) for the benchmark and its limit
 
 The most important performance finding from the project's testing was that reducing YOLO frequency alone does not remove the remaining end-to-end bottleneck. In a 1920×1080/59.94 FPS test, the previously measured end-to-end throughput was about **32.5 FPS**, with approximately **39.3 s spent in YOLO**, **0.3 s in pixelation**, and **49.3 s in video recording** for 3,597 frames.
 
-This means the next optimization target is the video-output path rather than adding increasingly complex tracking algorithms.
+This means a high-value optimization target is the video-output path rather than adding increasingly complex tracking algorithms.
 
-The performance branch therefore adds an FFmpeg pipe using `h264_nvenc`, moving H.264 encoding to the NVIDIA GPU. The legacy OpenCV `mp4v` path remains available for compatibility.
+Version **0.5.0** adds an FFmpeg pipe using `h264_nvenc`, moving H.264 encoding to the NVIDIA GPU. The legacy OpenCV `mp4v` path remains available for compatibility.
 
-No full tracker is introduced in this optimization step: the current `DETECT_EVERY = 5` motion-prediction strategy already provides the measured quality/performance balance, while more elaborate tracking previously added complexity without a demonstrated end-to-end gain.
+Throughput also depends on whether other GPU clients (for example OBS Studio) share the same device during the run. Compare `logs/benchmarks.jsonl` entries with that context in mind.
 
 ---
 
@@ -240,9 +251,10 @@ No full tracker is introduced in this optimization step: the current `DETECT_EVE
 BlurGPT/
 │
 ├── core/
+│   ├── benchmark.py      # Environment capture and benchmarks.jsonl writer
 │   ├── detector.py       # YOLO inference and Detection conversion
 │   ├── detection.py      # Internal detection representation
-│   ├── jobmanager.py     # Job discovery and file movement
+│   ├── jobmanager.py     # Job discovery, finish, and fail handling
 │   ├── motion.py         # Motion prediction
 │   ├── pixelate.py       # Anonymization
 │   ├── report.py         # Processing statistics
@@ -289,21 +301,20 @@ BlurGPT/
 - Face anonymization
 - License plate anonymization
 - CUDA acceleration
-- Batch video processing
-- Job-based file workflow
+- NVIDIA NVENC video encoding (OpenCV fallback)
+- Batch video processing with per-job failure isolation
+- Job-based file workflow (`input_archive/` / `input_error/`)
 - Temporary output workflow
-- Progress reporting
-- Processing statistics
-- Motion prediction
+- Progress reporting and benchmark logging
+- Motion prediction with size interpolation and class-aware matching
+- Detector reuse across the batch
 - Modular architecture
 - Internal `Detection` abstraction
-- Optional NVIDIA NVENC video encoding
 
 ### In development / planned
 
-- More robust exception handling and recovery
-- Further batch-processing improvements
-- Improved object tracking between detector calls when justified by measured quality gains
+- Further I/O validation (e.g. missing model file before a job)
+- Model packaging improvements (Git LFS / release assets)
 - Additional anonymization methods
 - GUI
 
@@ -313,7 +324,7 @@ BlurGPT/
 
 - **Python** — application language
 - **OpenCV** — video input and frame processing
-- **FFmpeg** — optional hardware video encoding
+- **FFmpeg** — hardware video encoding
 - **Ultralytics YOLO** — object detection
 - **PyTorch** — deep-learning inference
 - **CUDA / NVENC** — GPU acceleration and video encoding
