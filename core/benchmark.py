@@ -57,6 +57,7 @@ def write_benchmark(video_name, stats, video, settings, run_id, environment):
         "pixelation_time_s": round(stats.tempo_pixel, 3),
         "write_time_s": round(stats.tempo_write, 3),
         "encoder": video.write_backend,
+        "profile": _profile_name(settings),
         "device": settings["device"],
         "detect_every": settings["detect_every"],
         "imgsz": settings["imgsz"],
@@ -75,3 +76,13 @@ def write_benchmark(video_name, stats, video, settings, run_id, environment):
             log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
     except OSError as exc:
         print(f"Warning: benchmark log could not be written: {exc}")
+
+
+def _profile_name(settings):
+    """Identify the built-in profile represented by the effective settings."""
+    from core.settings import profile_name
+
+    try:
+        return profile_name(settings)
+    except ValueError:
+        return "Custom"
