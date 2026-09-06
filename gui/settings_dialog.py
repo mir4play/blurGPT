@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.settings import load_settings, reset_settings, save_settings
+from core.settings import load_settings, profile_values, reset_settings, save_settings
 
 
 class SettingsDialog(QDialog):
@@ -28,9 +28,8 @@ class SettingsDialog(QDialog):
 
         root = QVBoxLayout(self)
         intro = QLabel(
-            "Recommended values are preconfigured. Advanced users can tune the "
-            "detection and encoding parameters here. Changes apply to the next "
-            "processing run."
+            "Choose a processing profile or tune the individual parameters. "
+            "Changes apply to the next processing run."
         )
         intro.setWordWrap(True)
         intro.setObjectName("secondary")
@@ -39,12 +38,23 @@ class SettingsDialog(QDialog):
         form = QFormLayout()
         form.setSpacing(12)
 
+        self.profile = QComboBox()
+        self.profile.addItem("Recommended", "Recommended")
+        self.profile.addItem("Performance", "Performance")
+        self.profile.addItem("Quality", "Quality")
+        self.profile.addItem("Custom", "Custom")
+        self.profile.setCurrentIndex(3)
+        self.profile.setToolTip(
+            "Recommended balances detection and speed. Performance favors throughput; "
+            "Quality increases detection frequency and inference resolution."
+        )
+        self.profile.currentIndexChanged.connect(self._profile_changed)
+        form.addRow("Processing profile", self.profile)
+
         self.device = QComboBox()
         self.device.addItem("GPU 0 (recommended)", 0)
         self.device.addItem("CPU (not recommended)", "cpu")
-        self.device.setCurrentIndex(
-            0 if settings["device"] == 0 else 1
-        )
+        self.device.setCurrentIndex(0 if settings["device"] == 0 else 1)
         self.device.setToolTip("CUDA device used by YOLO inference.")
         form.addRow("Device", self.device)
 
@@ -52,8 +62,8 @@ class SettingsDialog(QDialog):
         self.detect_every.setRange(1, 100)
         self.detect_every.setValue(int(settings["detect_every"]))
         self.detect_every.setToolTip(
-            "Run YOLO every N frames. Lower values improve tracking accuracy "
-            "but increase GPU workload. Recommended: 5."
+            "Run YOLO every N frames. Lower values improve detection continuity "
+            "but increase GPU workload."
         )
         form.addRow("Detection interval", self.detect_every)
 
@@ -110,10 +120,10 @@ class SettingsDialog(QDialog):
         form.addRow("NVENC preset", self.preset)
 
         root.addLayout(form)
+        self._apply_profile("Custom")
+        self._set_profile_from_current()
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Save | QDialogButtonBox.Cancel
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         reset_button = buttons.addButton(
             "Restore recommended", QDialogButtonBox.ResetRole
         )
@@ -122,9 +132,15 @@ class SettingsDialog(QDialog):
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
 
-    def _restore_defaults(self):
-        values = reset_settings()
-        self.device.setCurrentIndex(0 if values["device"] == 0 else 1)
+    def _profile_changed(self):
+        name = self.profile.currentData()
+        if name != "Custom":
+            self._apply_profile(name)
+
+    def _apply_profile(self, name: str):
+        if name == "Custom":
+            return
+        values = profile_values(name)
         self.detect_every.setValue(int(values["detect_every"]))
         self.imgsz.setValue(int(values["imgsz"]))
         self.pixel_size.setValue(int(values["pixel_size"]))
@@ -133,6 +149,31 @@ class SettingsDialog(QDialog):
         self.cq.setValue(int(values["video_nvenc_cq"]))
         index = self.preset.findData(str(values["video_nvenc_preset"]).lower())
         self.preset.setCurrentIndex(index if index >= 0 else 3)
+
+    def _set_profile_from_current(self):
+        for index in range(self.profile.count() - 1):
+            name = self.profile.itemData(index)
+            values = profile_values(name)
+            if all(
+                getattr(self, field).value() == int(values[key])
+                for field, key in (
+                    ("detect_every", "detect_every"),
+                    ("imgsz", "imgsz"),
+                    ("pixel_size", "pixel_size"),
+                    ("box_margin", "box_margin"),
+                    ("cq", "video_nvenc_cq"),
+                )
+            ) and self.encoder.currentData() == values["video_encoder"] \
+                    and self.preset.currentData() == values["video_nvenc_preset"]:
+                self.profile.setCurrentIndex(index)
+                return
+        self.profile.setCurrentIndex(3)
+
+    def _restore_defaults(self):
+        values = reset_settings()
+        self.device.setCurrentIndex(0 if values["device"] == 0 else 1)
+        self.profile.setCurrentIndex(0)
+        self._apply_profile("Recommended")
 
     def _save(self):
         save_settings({
