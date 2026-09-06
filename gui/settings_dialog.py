@@ -8,12 +8,11 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QLabel,
-    QMessageBox,
     QSpinBox,
     QVBoxLayout,
 )
 
-from core.settings import load_settings, profile_values, reset_settings, save_settings
+from core.settings import load_settings, profile_values, save_settings
 
 
 class SettingsDialog(QDialog):
@@ -170,14 +169,16 @@ class SettingsDialog(QDialog):
         self.profile.setCurrentIndex(3)
 
     def _restore_defaults(self):
-        values = reset_settings()
+        """Restore recommended values in the dialog without saving yet."""
+        values = profile_values("Recommended")
         self.device.setCurrentIndex(0 if values["device"] == 0 else 1)
         self.profile.setCurrentIndex(0)
         self._apply_profile("Recommended")
 
     def _save(self):
+        current_settings = load_settings()
         save_settings({
-            "model_path": load_settings()["model_path"],
+            "model_path": current_settings["model_path"],
             "device": self.device.currentData(),
             "detect_every": self.detect_every.value(),
             "imgsz": self.imgsz.value(),
