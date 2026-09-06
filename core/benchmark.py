@@ -52,6 +52,11 @@ def write_benchmark(video_name, stats, video, settings, run_id, environment):
     """Append one structured processing record to the benchmark history."""
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+    # The benchmark must describe the effective configuration, not merely the
+    # environment captured before processing started.
+    environment = dict(environment or {})
+    environment.update(collect_environment(settings["device"]))
+
     record = {
         "run_id": run_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
