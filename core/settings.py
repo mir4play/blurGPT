@@ -1,9 +1,4 @@
-"""Persistent user settings for the BlurGPT GUI.
-
-The source-level defaults remain in ``config.py`` for backwards compatibility.
-The GUI stores user changes separately so a packaged executable never needs to
-rewrite Python source code.
-"""
+"""Persistent user settings and built-in processing profiles."""
 
 from __future__ import annotations
 
@@ -29,6 +24,50 @@ DEFAULTS: dict[str, Any] = {
     "video_nvenc_cq": config.VIDEO_NVENC_CQ,
     "video_nvenc_preset": config.VIDEO_NVENC_PRESET,
 }
+
+# Presets describe the intended trade-off; they are copied into the editable
+# controls by the GUI and are never written into config.py.
+PROFILES: dict[str, dict[str, Any]] = {
+    "Recommended": {
+        "detect_every": 5,
+        "imgsz": 640,
+        "pixel_size": 10,
+        "box_margin": 0,
+        "video_encoder": "h264_nvenc",
+        "video_codec": "mp4v",
+        "video_nvenc_cq": 23,
+        "video_nvenc_preset": "p4",
+    },
+    "Performance": {
+        "detect_every": 8,
+        "imgsz": 640,
+        "pixel_size": 10,
+        "box_margin": 0,
+        "video_encoder": "h264_nvenc",
+        "video_codec": "mp4v",
+        "video_nvenc_cq": 25,
+        "video_nvenc_preset": "p3",
+    },
+    "Quality": {
+        "detect_every": 2,
+        "imgsz": 1280,
+        "pixel_size": 10,
+        "box_margin": 0,
+        "video_encoder": "h264_nvenc",
+        "video_codec": "mp4v",
+        "video_nvenc_cq": 20,
+        "video_nvenc_preset": "p5",
+    },
+}
+
+
+def profile_values(name: str) -> dict[str, Any]:
+    """Return a complete settings dictionary for a built-in profile."""
+    if name not in PROFILES:
+        raise ValueError(f"Unknown settings profile: {name}")
+    values = DEFAULTS.copy()
+    values.update(PROFILES[name])
+    return values
 
 
 def _normalise(values: dict[str, Any]) -> dict[str, Any]:
@@ -73,6 +112,6 @@ def save_settings(values: dict[str, Any]) -> None:
 
 def reset_settings() -> dict[str, Any]:
     """Restore the recommended source-level defaults and persist them."""
-    values = DEFAULTS.copy()
+    values = profile_values("Recommended")
     save_settings(values)
     return values
