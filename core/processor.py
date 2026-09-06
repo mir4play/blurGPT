@@ -9,7 +9,7 @@ from core.benchmark import collect_environment, write_benchmark
 from core.detector import Detector
 from core.pixelate import pixelate
 from core.report import Stats, print_report
-from core.settings import load_settings
+from core.settings import load_settings, validate_settings
 from core.video import VideoProcessor
 
 
@@ -29,7 +29,7 @@ class BatchProcessor:
         self.cancel_callback = cancel_callback
         self._cancel_requested = False
         self._current_job = None
-        self.settings = load_settings()
+        self.settings = validate_settings(load_settings())
 
         self.run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         self.environment = collect_environment()
