@@ -40,7 +40,7 @@ def collect_environment():
     }
 
 
-def write_benchmark(video_name, stats, video, config, run_id, environment):
+def write_benchmark(video_name, stats, video, settings, run_id, environment):
     """Append one structured processing record to the benchmark history."""
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -57,12 +57,16 @@ def write_benchmark(video_name, stats, video, config, run_id, environment):
         "pixelation_time_s": round(stats.tempo_pixel, 3),
         "write_time_s": round(stats.tempo_write, 3),
         "encoder": video.write_backend,
-        "detect_every": config.DETECT_EVERY,
-        "imgsz": config.IMGSZ,
-        "model": config.MODEL_PATH,
-        "video_codec": config.VIDEO_CODEC,
-        "nvenc_cq": config.VIDEO_NVENC_CQ,
-        "nvenc_preset": config.VIDEO_NVENC_PRESET,
+        "device": settings["device"],
+        "detect_every": settings["detect_every"],
+        "imgsz": settings["imgsz"],
+        "model": settings["model_path"],
+        "video_encoder": settings["video_encoder"],
+        "video_codec": settings["video_codec"],
+        "nvenc_cq": settings["video_nvenc_cq"],
+        "nvenc_preset": settings["video_nvenc_preset"],
+        "pixel_size": settings["pixel_size"],
+        "box_margin": settings["box_margin"],
         "environment": environment,
     }
 
