@@ -25,10 +25,17 @@ def _ffmpeg_version():
         return "not available"
 
 
-def collect_environment():
+def collect_environment(device=0):
+    """Collect the runtime environment used by the processing session."""
     gpu = None
+    cuda_device = None
+
     if torch.cuda.is_available():
-        gpu = torch.cuda.get_device_name(0)
+        if isinstance(device, int) and 0 <= device < torch.cuda.device_count():
+            cuda_device = device
+        else:
+            cuda_device = 0
+        gpu = torch.cuda.get_device_name(cuda_device)
 
     return {
         "python": platform.python_version(),
@@ -36,6 +43,7 @@ def collect_environment():
         "pytorch": torch.__version__,
         "cuda": torch.version.cuda,
         "gpu": gpu,
+        "cuda_device": cuda_device,
         "ffmpeg": _ffmpeg_version(),
     }
 
