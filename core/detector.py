@@ -18,6 +18,15 @@ class Detector:
 
         self.frame_count = 0
 
+    def reset(self):
+        """
+        Resets per-video state so the same Detector instance
+        can process multiple jobs without reloading the model.
+        """
+
+        self.predictor.reset()
+        self.frame_count = 0
+
     def detect(self, frame, stats=None):
 
         if self.frame_count % self.detect_every == 0:
@@ -45,7 +54,7 @@ class Detector:
         self.frame_count += 1
 
         return self.predictor.get_detections()
-        
+
     def create_detections(self, boxes):
         """
         Creates internal Detection objects from YOLO output.

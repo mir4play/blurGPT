@@ -24,8 +24,10 @@ input_error/*
 # Logs
 # ==========================================================
 
-#logs/*
-#!logs/.gitkeep
+logs/*
+!logs/.gitkeep
+!logs/benchmarks.jsonl
+!logs/errors.log
 
 # ==========================================================
 # Training

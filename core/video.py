@@ -17,8 +17,8 @@ class VideoProcessor:
         nvenc_preset="p4"
     ):
 
-        self.input_video = input_video
-        self.output_video = output_video
+        self.input_video = str(input_video)
+        self.output_video = str(output_video)
         self.codec = codec
         self.encoder = encoder
         self.nvenc_cq = nvenc_cq
@@ -27,18 +27,28 @@ class VideoProcessor:
         self.ffmpeg = None
         self.write_backend = "opencv"
 
-        self.cap = cv2.VideoCapture(input_video)
+        self.cap = cv2.VideoCapture(self.input_video)
 
         if not self.cap.isOpened():
-            raise Exception(f"Erro ao abrir vídeo: {input_video}")
+            raise RuntimeError(f"Erro ao abrir vídeo: {self.input_video}")
 
         self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        self.fps = float(self.cap.get(cv2.CAP_PROP_FPS))
         self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+        if self.width <= 0 or self.height <= 0:
+            self.cap.release()
+            raise RuntimeError(
+                f"Resolução inválida no vídeo: {self.input_video} "
+                f"({self.width}x{self.height})"
+            )
+
         if self.fps <= 0:
-            raise Exception("Não foi possível determinar o FPS do vídeo.")
+            self.cap.release()
+            raise RuntimeError(
+                f"FPS inválido (0 ou negativo) no vídeo: {self.input_video}"
+            )
 
         if encoder == "h264_nvenc":
             self._create_nvenc_writer()
@@ -57,7 +67,8 @@ class VideoProcessor:
         )
 
         if not self.writer.isOpened():
-            raise Exception(
+            self.cap.release()
+            raise RuntimeError(
                 f"Não foi possível abrir o VideoWriter com codec '{codec}'."
             )
 
@@ -68,6 +79,7 @@ class VideoProcessor:
         ffmpeg_path = shutil.which("ffmpeg")
 
         if ffmpeg_path is None:
+            self.cap.release()
             raise RuntimeError(
                 "FFmpeg não encontrado. Instale o FFmpeg e coloque-o no PATH "
                 "ou use VIDEO_ENCODER='opencv'."

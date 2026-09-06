@@ -6,6 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- MotionPredictor now applies `dw`/`dh` when interpolating bounding-box size between YOLO calls (previously only translation was applied).
+- Motion matching is class-aware and uses a distance threshold based on the previous box diagonal, reducing face↔plate swaps and long-range false matches.
+- Failed jobs are moved to `input_error/`, partial temp outputs are cleaned, and a line is appended to `logs/errors.log` instead of aborting the whole batch.
+- Video I/O validates resolution and FPS before processing starts (NVENC path preserved).
+
+### Changed
+
+- `Detector` is instantiated once per batch and reused across videos via `reset()` (avoids reloading the YOLO weights for every file).
+- `Detection` dataclass no longer declares duplicated `cx`/`cy`/`w`/`h` properties.
+
 ### Documentation
 
 - Audited the README against the current runtime implementation.
@@ -17,7 +29,7 @@ All notable changes to this project will be documented in this file.
 - Updated the roadmap so completed work is no longer presented as future work.
 - Added a note that no open-source license is currently declared in the repository.
 
-> This entry is documentation-only and does **not** change the application version.
+> Built on top of `feature/performance-audit` (NVENC + benchmark logging). Application version is still **0.4.0** until a release is cut.
 
 ---
 
