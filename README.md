@@ -21,6 +21,8 @@ BlurGPT is a GPU-accelerated video anonymization tool for offline processing. It
 - ♻️ YOLO model loaded once and reused across the batch
 - 📊 Processing statistics and `logs/benchmarks.jsonl`
 - ⏳ Progress bar
+- 🖥️ PySide6 desktop GUI with queue management
+- ⚙️ Persistent GUI settings and processing profiles
 - 🧩 Modular architecture
 - 🔄 Automatic recovery of jobs left in `processing/`
 
@@ -76,13 +78,7 @@ The recommended output path is NVIDIA H.264 hardware encoding through FFmpeg. Ve
 ffmpeg -hide_banner -encoders | findstr nvenc
 ```
 
-You should see `h264_nvenc` in the encoder list. If FFmpeg or NVENC is unavailable, set:
-
-```python
-VIDEO_ENCODER = "opencv"
-```
-
-to use the legacy OpenCV `mp4v` encoder.
+You should see `h264_nvenc` in the encoder list. If FFmpeg or NVENC is unavailable, the GUI can use the OpenCV `mp4v` fallback.
 
 ---
 
@@ -141,7 +137,13 @@ input_error/
 logs/
 ```
 
-Place one or more supported videos in `input/` and run:
+Place one or more supported videos in `input/` and run either the desktop GUI:
+
+```bash
+python gui.py
+```
+
+or the processing entry point:
 
 ```bash
 python blurGPT.py
@@ -162,15 +164,47 @@ input/
 └── video3.mp4
 ```
 
-BlurGPT will process jobs one at a time. Videos found in `processing/` have priority over new videos in `input/`, allowing an interrupted job to be picked up on the next execution.
+BlurGPT processes jobs one at a time. Videos found in `processing/` have priority over new videos in `input/`, allowing an interrupted job to be picked up on the next execution.
+
+---
+
+## Desktop GUI
+
+The PySide6 GUI is designed to keep heavy video processing outside the Qt event loop. Processing runs in a worker thread so the interface remains responsive during YOLO inference and video encoding.
+
+The GUI currently provides:
+
+- Video queue with multi-selection
+- Add videos without loading the complete file into RAM
+- Safe removal of queued inputs without deleting the original source file
+- Start and cooperative cancellation
+- Progress and current-job status
+- Elapsed-time heartbeat independent of frame progress
+- Persistent settings
+- Processing profiles: **Recommended**, **Performance**, **Quality**, and **Custom**
+
+### Settings profiles
+
+| Profile | Intended use | Detection | Inference | NVENC |
+|---|---|---:|---:|---|
+| Recommended | Balanced default | every 5 frames | 640 | CQ 23 / P4 |
+| Performance | Higher throughput | every 8 frames | 640 | CQ 25 / P3 |
+| Quality | More frequent/smaller-object detection | every 2 frames | 1280 | CQ 20 / P5 |
+| Custom | Manual tuning | user-defined | user-defined | user-defined |
+
+Settings changed through the GUI are stored in `config/settings.json` and do not modify `config.py`. The local settings file is intentionally ignored by Git.
+
+The GUI settings layer is being developed toward a packaged Windows application so end users will not need to edit Python source files.
 
 ---
 
 ## Configuration
 
-Runtime settings are centralized in `config.py`. Important options include:
+Source-level defaults remain in `config.py` for compatibility. The GUI uses the persistent runtime settings in `config/settings.json`, which are initialized from those defaults when no settings file exists.
 
-| Setting | Current value | Purpose |
+Important settings include:
+
+| Setting | Default | Purpose |
 |---|---:|---|
 | `MODEL_PATH` | `models/blurGPT.pt` | YOLO model used for detection |
 | `DEVICE` | `0` | First CUDA GPU |
@@ -182,9 +216,6 @@ Runtime settings are centralized in `config.py`. Important options include:
 | `VIDEO_CODEC` | `mp4v` | OpenCV fallback codec |
 | `VIDEO_NVENC_CQ` | `23` | NVENC constant-quality target |
 | `VIDEO_NVENC_PRESET` | `p4` | NVENC performance/quality preset |
-| `SHOW_VIDEO` | `False` | Legacy configuration flag; not currently used by the runtime |
-| `SAVE_VIDEO` | `True` | Legacy configuration flag; video output is currently always enabled |
-| `SHOW_REPORT` | `True` | Legacy configuration flag; reports are currently always printed |
 
 `DETECT_EVERY = 5` means YOLO is not executed on every frame. Between detector calls, `MotionPredictor` estimates object position and size from the previous detections.
 
@@ -258,7 +289,13 @@ BlurGPT/
 │   ├── motion.py         # Motion prediction
 │   ├── pixelate.py       # Anonymization
 │   ├── report.py         # Processing statistics
+│   ├── settings.py       # Persistent runtime settings and profiles
 │   └── video.py          # Video I/O and encoding
+│
+├── gui/
+│   ├── main_window.py    # PySide6 desktop interface
+│   ├── settings_dialog.py# Settings and processing profiles
+│   └── worker.py         # Background processing worker
 │
 ├── docs/
 │   ├── architecture.md
@@ -275,11 +312,12 @@ BlurGPT/
 ├── input_archive/
 ├── input_error/
 ├── logs/
-│
-├── blurGPT.py
 ├── config.py
+├── gui.py
+├── blurGPT.py
 ├── requirements.txt
 ├── CHANGELOG.md
+├── LICENSE
 └── README.md
 ```
 
@@ -311,19 +349,24 @@ BlurGPT/
 - Model-file validation before detector initialization
 - Modular architecture
 - Internal `Detection` abstraction
+- PySide6 desktop GUI
+- Persistent GUI settings
+- Processing profiles
 
 ### In development / planned
 
-- Optional cleanup of unused legacy configuration flags
+- Clean / Advanced GUI modes with detailed live performance metrics
+- Additional GUI queue and result-state information
 - Model packaging improvements (Git LFS / release assets)
+- First-run diagnostics and packaged Windows distribution
 - Additional anonymization methods
-- GUI
 
 ---
 
 ## Technologies
 
 - **Python** — application language
+- **PySide6 / Qt** — desktop GUI
 - **OpenCV** — video input and frame processing
 - **FFmpeg** — hardware video encoding
 - **Ultralytics YOLO** — object detection
@@ -332,4 +375,12 @@ BlurGPT/
 
 ## License
 
-No open-source license is currently declared in the repository. Unless a license is added, the default copyright rules apply to the project source code.
+BlurGPT is released under the **MIT License**. You may use, copy, modify, merge, publish, distribute, sublicense, and sell copies of the software for **personal or commercial purposes**, provided that the copyright notice and license notice are retained in copies or substantial portions of the software.
+
+Copyright © 2026 Adler Nicolau dos Santos.
+
+See [`LICENSE`](LICENSE) for the complete license text.
+
+### Third-party components
+
+BlurGPT depends on third-party software such as Python, PySide6, OpenCV, PyTorch, Ultralytics YOLO, and FFmpeg. Those components remain subject to their own licenses. The BlurGPT MIT license does not replace or override third-party licensing terms.
