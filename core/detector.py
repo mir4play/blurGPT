@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 from ultralytics import YOLO
 from core.detection import Detection
@@ -8,6 +9,12 @@ from core.motion import MotionPredictor
 class Detector:
 
     def __init__(self, model_path, device=0, detect_every=1, imgsz=640):
+
+        model_file = Path(model_path)
+        if not model_file.is_file():
+            raise FileNotFoundError(
+                f"YOLO model not found: {model_file}"
+            )
 
         self.model = YOLO(model_path)
         self.device = device
