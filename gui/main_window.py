@@ -5,9 +5,10 @@ is delegated to ProcessingWorker/QThread so the interface remains responsive.
 """
 
 import shutil
+import time
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, QThread
+from PySide6.QtCore import QThread, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -227,7 +228,7 @@ class MainWindow(QMainWindow):
         self._set_processing_state(True)
         self.progress.setValue(0)
         self._last_progress = 0
-        self._processing_started_at = __import__("time").monotonic()
+        self._processing_started_at = time.monotonic()
         self.heartbeat_label.setText("Worker starting…")
         self.status_label.setText("Starting…")
         self._heartbeat.start()
@@ -252,7 +253,6 @@ class MainWindow(QMainWindow):
     def _update_heartbeat(self):
         if self._processing_started_at is None:
             return
-        import time
 
         elapsed = int(time.monotonic() - self._processing_started_at)
         minutes, seconds = divmod(elapsed, 60)
