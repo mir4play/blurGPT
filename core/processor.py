@@ -28,6 +28,7 @@ class BatchProcessor:
         self.status_callback = status_callback
         self.cancel_callback = cancel_callback
         self._cancel_requested = False
+        self._current_job = None
 
         self.run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         self.environment = collect_environment()
@@ -40,7 +41,6 @@ class BatchProcessor:
         )
 
     def request_cancel(self):
-        """Request cancellation at the next safe processing point."""
         self._cancel_requested = True
 
     def _is_cancelled(self):
@@ -62,6 +62,7 @@ class BatchProcessor:
         if self._is_cancelled():
             raise ProcessingCancelled
 
+        self._current_job = job
         self._emit_status(f"Processing {current_job}/{total_jobs}: {job.filename}")
         self.manager.start(job)
         stats = Stats()
@@ -101,7 +102,6 @@ class BatchProcessor:
                     self._emit_progress(
                         int(stats.frames / video.total_frames * 100)
                     )
-
         finally:
             video.release()
 
@@ -116,6 +116,7 @@ class BatchProcessor:
             self.environment,
         )
         self._emit_progress(100)
+        self._current_job = None
 
     def run(self):
         """Process the current batch and return a summary dictionary."""
@@ -141,6 +142,7 @@ class BatchProcessor:
                 self.process_job(job, index + 1, total_jobs)
                 succeeded += 1
             except ProcessingCancelled:
+                self.manager.cancel(job)
                 self._emit_status("Cancellation requested — stopping safely")
                 break
             except Exception as error:
