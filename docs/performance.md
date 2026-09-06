@@ -55,7 +55,28 @@ Measured stage times for the same batch:
 
 The clean test demonstrates that the NVENC path is functioning and substantially reduces the measured recording-stage cost compared with the earlier feature-branch observation. It does **not** establish that NVENC alone caused the entire increase from ~32.5 FPS to ~48.7 FPS, because the earlier benchmark had concurrent OBS GPU load and was not an A/B comparison under identical conditions.
 
-The current result shifts the optimization focus toward YOLO inference rather than pixelation or introducing a more complex tracker.
+## Subsequent real-world NVENC validation
+
+Additional batches were processed after the clean validation. These results demonstrate that throughput can vary substantially between runs even with the same encoder and nominal configuration, reinforcing the need to compare benchmark records with their run context.
+
+A September 6 batch used `DETECT_EVERY = 5`, `IMGSZ = 640`, 1920×1080/59.94 FPS input and FFmpeg `h264_nvenc`:
+
+| Video | Frames | Processing time | Processing FPS |
+|---|---:|---:|---:|
+| GX010314.MP4 | 180,480 | 2468.81 s | 73.10 |
+| GX010315.MP4 | 180,480 | 2407.58 s | 74.96 |
+| GX020314.MP4 | 180,480 | 2479.79 s | 72.78 |
+| **Total** | **541,440** | **7,356.18 s** | **73.60** |
+
+The three-video batch recorded approximately:
+
+- YOLO: **1,679.85 s**
+- Pixelation: **12.28 s**
+- Video recording: **1,303.13 s**
+
+These figures should not be interpreted as a controlled improvement over the earlier 48.74 FPS batch because the input videos, workload and run conditions were not identical. They do, however, confirm that the current NVENC implementation can sustain substantially above real-time throughput on this hardware under favorable conditions.
+
+The raw benchmark history is stored in `logs/benchmarks.jsonl`.
 
 ## Current encoding configuration
 
@@ -78,7 +99,7 @@ NVENC requires a compatible NVIDIA driver and FFmpeg build with `h264_nvenc` sup
 
 ## Benchmark logging
 
-Each processing run can append structured records to:
+Each processing run appends structured records to:
 
 ```text
 logs/benchmarks.jsonl
@@ -138,5 +159,5 @@ Video recording identified as a major cost
         ↓
 NVENC implemented and validated
         ↓
-YOLO becomes the next optimization target
+Further optimization should target the measured dominant stage
 ```
