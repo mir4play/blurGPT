@@ -1,8 +1,4 @@
-"""Main BlurGPT application window.
-
-The window never runs video processing in the Qt event-loop thread. Heavy work
-is delegated to ProcessingWorker/QThread so the interface remains responsive.
-"""
+"""Main BlurGPT application window."""
 
 import shutil
 import time
@@ -26,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.jobmanager import JobManager
+from gui.settings_dialog import SettingsDialog
 from gui.worker import ProcessingWorker
 
 
@@ -34,7 +31,6 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-
         self.manager = JobManager()
         self.thread = None
         self.worker = None
@@ -49,7 +45,6 @@ class MainWindow(QMainWindow):
         self._heartbeat = QTimer(self)
         self._heartbeat.setInterval(1000)
         self._heartbeat.timeout.connect(self._update_heartbeat)
-
         self.refresh_jobs()
 
     def _build_ui(self):
@@ -81,8 +76,7 @@ class MainWindow(QMainWindow):
         self.add_button.clicked.connect(self.add_videos)
         self.remove_button = QPushButton("Remove selected")
         self.remove_button.setToolTip(
-            "Remove the selected queued videos from BlurGPT's input folder. "
-            "Original source files are not deleted."
+            "Remove selected queued videos. Original source files are not deleted."
         )
         self.remove_button.clicked.connect(self.remove_selected_videos)
         self.refresh_button = QPushButton("Refresh")
@@ -117,8 +111,11 @@ class MainWindow(QMainWindow):
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setEnabled(False)
         self.cancel_button.clicked.connect(self.cancel_processing)
+        self.settings_button = QPushButton("Settings…")
+        self.settings_button.clicked.connect(self.open_settings)
         action_buttons.addWidget(self.start_button)
         action_buttons.addWidget(self.cancel_button)
+        action_buttons.addWidget(self.settings_button)
         status_layout.addLayout(action_buttons)
 
         content.addWidget(input_card, 0, 0)
@@ -129,8 +126,8 @@ class MainWindow(QMainWindow):
 
         info = QLabel(
             "Processing runs in a background worker. The window stays responsive "
-            "while YOLO and NVENC are working, and Cancel stops safely at the "
-            "next processing point without treating the video as a failed job."
+            "while YOLO and NVENC are working. Settings are saved separately "
+            "from the Python source and apply to the next processing run."
         )
         info.setWordWrap(True)
         info.setObjectName("info")
@@ -171,29 +168,22 @@ class MainWindow(QMainWindow):
     def refresh_jobs(self):
         if self.thread is not None and self.thread.isRunning():
             return
-
         self.queue_list.clear()
         jobs = self.manager.find_jobs()
         for job in jobs:
             self.queue_list.addItem(f"[{job.source}]  {job.filename}")
-
         count = len(jobs)
-        self.status_label.setText(
-            f"{count} video{'s' if count != 1 else ''} waiting"
-        )
+        self.status_label.setText(f"{count} video{'s' if count != 1 else ''} waiting")
         self.start_button.setEnabled(count > 0)
         self.remove_button.setEnabled(count > 0)
 
     def add_videos(self):
         files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Select videos",
-            str(Path.cwd()),
+            self, "Select videos", str(Path.cwd()),
             "Videos (*.mp4 *.mov *.avi *.mkv *.m4v *.wmv)",
         )
         if not files:
             return
-
         copied = 0
         for filename in files:
             source = Path(filename)
@@ -204,43 +194,26 @@ class MainWindow(QMainWindow):
                 shutil.copy2(source, destination)
                 copied += 1
             except OSError as error:
-                QMessageBox.warning(
-                    self, "Could not add video", f"{source.name}\n\n{error}"
-                )
-
+                QMessageBox.warning(self, "Could not add video", f"{source.name}\n\n{error}")
         self.refresh_jobs()
         if copied:
-            self.status_label.setText(
-                f"Added {copied} video{'s' if copied != 1 else ''}"
-            )
+            self.status_label.setText(f"Added {copied} video{'s' if copied != 1 else ''}")
 
     def remove_selected_videos(self):
         selected = self.queue_list.selectedItems()
         if not selected:
             self.status_label.setText("Select one or more videos to remove")
             return
-
-        filenames = []
-        for item in selected:
-            text = item.text()
-            if "]  " in text:
-                filenames.append(text.split("]  ", 1)[1])
-
-        if not filenames:
-            return
-
+        filenames = [item.text().split("]  ", 1)[1] for item in selected if "]  " in item.text()]
         count = len(filenames)
         answer = QMessageBox.question(
-            self,
-            "Remove from queue",
-            f"Remove {count} selected video{'s' if count != 1 else ''} from the "
-            "BlurGPT queue?\n\nThe original source files will not be deleted.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            self, "Remove from queue",
+            f"Remove {count} selected video{'s' if count != 1 else ''} from the BlurGPT queue?\n\n"
+            "The original source files will not be deleted.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
         if answer != QMessageBox.Yes:
             return
-
         removed = 0
         for filename in filenames:
             path = self.manager.input_dir / filename
@@ -249,23 +222,23 @@ class MainWindow(QMainWindow):
                     path.unlink()
                     removed += 1
             except OSError as error:
-                QMessageBox.warning(
-                    self, "Could not remove video", f"{filename}\n\n{error}"
-                )
-
+                QMessageBox.warning(self, "Could not remove video", f"{filename}\n\n{error}")
         self.refresh_jobs()
-        self.status_label.setText(
-            f"Removed {removed} video{'s' if removed != 1 else ''} from queue"
-        )
+        self.status_label.setText(f"Removed {removed} video{'s' if removed != 1 else ''} from queue")
+
+    def open_settings(self):
+        if self.thread is not None and self.thread.isRunning():
+            return
+        dialog = SettingsDialog(self)
+        if dialog.exec():
+            self.status_label.setText("Settings saved — ready for the next run")
 
     def start_processing(self):
         if self.thread is not None and self.thread.isRunning():
             return
-
         self.thread = QThread(self)
         self.worker = ProcessingWorker()
         self.worker.moveToThread(self.thread)
-
         self.thread.started.connect(self.worker.run)
         self.worker.progress.connect(self._on_progress)
         self.worker.status.connect(self._on_status)
@@ -274,7 +247,6 @@ class MainWindow(QMainWindow):
         self.worker.finished.connect(self.thread.quit)
         self.worker.failed.connect(self.thread.quit)
         self.thread.finished.connect(self._cleanup_worker)
-
         self._set_processing_state(True)
         self.progress.setValue(0)
         self._last_progress = 0
@@ -303,12 +275,10 @@ class MainWindow(QMainWindow):
     def _update_heartbeat(self):
         if self._processing_started_at is None:
             return
-
         elapsed = int(time.monotonic() - self._processing_started_at)
         minutes, seconds = divmod(elapsed, 60)
         self.heartbeat_label.setText(
-            f"Worker active • elapsed {minutes:02d}:{seconds:02d} • "
-            f"last frame progress {self._last_progress}%"
+            f"Worker active • elapsed {minutes:02d}:{seconds:02d} • last frame progress {self._last_progress}%"
         )
 
     def _on_finished(self, result):
@@ -317,10 +287,7 @@ class MainWindow(QMainWindow):
         if result.get("cancelled"):
             self.status_label.setText("Cancelled safely")
         else:
-            self.status_label.setText(
-                f"Finished — {result['succeeded']} succeeded, "
-                f"{result['failed']} failed"
-            )
+            self.status_label.setText(f"Finished — {result['succeeded']} succeeded, {result['failed']} failed")
         self.heartbeat_label.setText("Idle")
         self._set_processing_state(False)
         self.refresh_jobs()
@@ -347,6 +314,7 @@ class MainWindow(QMainWindow):
         self.add_button.setEnabled(not running)
         self.remove_button.setEnabled(not running)
         self.refresh_button.setEnabled(not running)
+        self.settings_button.setEnabled(not running)
         self.start_button.setEnabled(not running and bool(self.manager.find_jobs()))
         self.cancel_button.setEnabled(running)
 
@@ -354,13 +322,10 @@ class MainWindow(QMainWindow):
         if self.thread is None or not self.thread.isRunning():
             event.accept()
             return
-
         answer = QMessageBox.question(
-            self,
-            "Processing is still running",
+            self, "Processing is still running",
             "BlurGPT is processing a video. Cancel safely and close when it stops?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
         if answer == QMessageBox.Yes:
             self._closing_after_processing = True
