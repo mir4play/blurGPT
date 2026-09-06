@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 from ultralytics import YOLO
 from core.detection import Detection
@@ -9,6 +10,12 @@ class Detector:
 
     def __init__(self, model_path, device=0, detect_every=1, imgsz=640):
 
+        model_file = Path(model_path)
+        if not model_file.is_file():
+            raise FileNotFoundError(
+                f"YOLO model not found: {model_file}"
+            )
+
         self.model = YOLO(model_path)
         self.device = device
         self.detect_every = detect_every
@@ -16,6 +23,15 @@ class Detector:
 
         self.predictor = MotionPredictor(detect_every)
 
+        self.frame_count = 0
+
+    def reset(self):
+        """
+        Resets per-video state so the same Detector instance
+        can process multiple jobs without reloading the model.
+        """
+
+        self.predictor.reset()
         self.frame_count = 0
 
     def detect(self, frame, stats=None):
@@ -45,7 +61,7 @@ class Detector:
         self.frame_count += 1
 
         return self.predictor.get_detections()
-        
+
     def create_detections(self, boxes):
         """
         Creates internal Detection objects from YOLO output.

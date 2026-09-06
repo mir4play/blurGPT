@@ -27,15 +27,18 @@ class MotionPredictor:
             self.motion = None
             return
 
-        if len(self.previous_detections) != len(self.last_detections):
-            self.motion = None
-            return
-
-        self.motion = []
-
         pairs = self.match_detections()
 
+        # Build motion only for successfully matched pairs.
+        # Unmatched objects keep motion = None for that slot so
+        # predict_detections falls back to the last known box.
+        self.motion = []
+
         for prev, curr in pairs:
+
+            if prev is None:
+                self.motion.append(None)
+                continue
 
             pcx = prev.cx
             pcy = prev.cy
@@ -57,11 +60,14 @@ class MotionPredictor:
 
             self.motion.append((dx, dy, dw, dh))
 
+        # If nothing was matched at all, disable prediction for this interval.
+        if all(m is None for m in self.motion):
+            self.motion = None
 
     def predict_detections(self):
         """
         Predicts object positions between YOLO detections
-        using linear motion estimation.
+        using linear motion estimation (center + size).
         """
 
         if self.motion is None:
@@ -71,22 +77,25 @@ class MotionPredictor:
 
         n = self.frames_since_detection
 
-        for detection, (dx, dy, dw, dh) in zip(
+        for detection, motion in zip(
             self.last_detections,
             self.motion
         ):
+
+            if motion is None:
+                # No reliable match for this object — keep last box
+                predicted.append(detection)
+                continue
+
+            dx, dy, dw, dh = motion
 
             # Predict center
             cx = detection.cx + dx * n
             cy = detection.cy + dy * n
 
-            # Predict size
-            w = detection.width
-            h = detection.height
-
-            # Avoid invalid sizes
-            w = max(1.0, w)
-            h = max(1.0, h)
+            # Predict size (was previously ignored)
+            w = max(1.0, detection.width + dw * n)
+            h = max(1.0, detection.height + dh * n)
 
             # Rebuild bounding box
             x1 = cx - w / 2
@@ -134,34 +143,55 @@ class MotionPredictor:
 
     def match_detections(self):
         """
-        Matches current detections with previous detections
-        using the nearest center distance.
+        Matches current detections with previous detections.
+
+        Lightweight rules (no full tracker):
+        - only same class (face↔face, plate↔plate)
+        - nearest center within a distance threshold based on the
+          previous box diagonal
+        - greedy assignment
         """
 
         pairs = []
 
-        unused_previous = self.previous_detections.copy()
+        unused_previous = list(self.previous_detections)
 
         for curr in self.last_detections:
-
-            if not unused_previous:
-                break
 
             best = None
             best_distance = float("inf")
 
             for prev in unused_previous:
 
+                # Same class only
+                if prev.cls != curr.cls:
+                    continue
+
                 dx = prev.cx - curr.cx
                 dy = prev.cy - curr.cy
+                distance = (dx * dx + dy * dy) ** 0.5
 
-                distance = dx * dx + dy * dy
+                # Distance threshold: previous box diagonal * 1.5
+                prev_diag = (prev.width ** 2 + prev.height ** 2) ** 0.5
+                max_dist = max(prev_diag * 1.5, 30.0)
 
-                if distance < best_distance:
+                if distance < best_distance and distance <= max_dist:
                     best_distance = distance
                     best = prev
 
             pairs.append((best, curr))
-            unused_previous.remove(best)
+
+            if best is not None:
+                unused_previous.remove(best)
 
         return pairs
+
+    def reset(self):
+        """
+        Clears motion state so the predictor can be reused across videos.
+        """
+
+        self.previous_detections = []
+        self.last_detections = []
+        self.motion = None
+        self.frames_since_detection = 0

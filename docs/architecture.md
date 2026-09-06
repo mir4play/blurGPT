@@ -1,6 +1,6 @@
 # BlurGPT Architecture
 
-This document describes the runtime architecture of the current BlurGPT implementation.
+This document describes the runtime architecture of the current BlurGPT implementation (**0.5.0**).
 
 ## Runtime pipeline
 
@@ -11,25 +11,23 @@ Video file
 JobManager
     │
     ▼
-VideoProcessor ───────────────┐
-    │                          │
-    ▼                          │
-Detector (YOLO)               │
-    │                          │
-    ▼                          │
-MotionPredictor                │
-    │                          │
-    ▼                          │
-Pixelation ◄───────────────────┘
+VideoProcessor (OpenCV decode + NVENC or OpenCV encode)
     │
     ▼
-VideoWriter
+Detector (YOLO, loaded once per batch)
     │
     ▼
-temp/ → output/
+MotionPredictor (center + size; class-aware match)
+    │
+    ▼
+Pixelation
+    │
+    ▼
+temp/ → output/   (success)
+processing/ → input_error/   (failure)
 ```
 
-The original input is moved to `input_archive/` after successful completion.
+On success the original input is moved to `input_archive/`. On failure, `JobManager.fail()` moves the input to `input_error/`, deletes partial temp output, and appends `logs/errors.log`.
 
 ## Module responsibilities
 
@@ -37,28 +35,15 @@ The original input is moved to `input_archive/` after successful completion.
 
 Application entry point and orchestration layer. It:
 
-1. Creates the `JobManager`.
-2. Discovers pending jobs.
-3. Starts each job.
-4. Creates the video processor, detector and statistics collector.
-5. Reads frames in a loop.
-6. Runs detection or motion prediction.
-7. Pixelates detected regions.
-8. Writes processed frames.
-9. Finalizes the job and prints the processing report.
+1. Creates the `JobManager` and discovers pending jobs.
+2. Loads **one** `Detector` for the whole batch.
+3. For each job: `start` → process frames inside `try/except` → `finish` or `fail`.
+4. Resets detector motion state between videos (`detector.reset()`).
+5. Prints the processing report and appends a benchmark record.
 
 ### `config.py`
 
-Central configuration for the runtime. It defines the model path, CUDA device, detection interval, inference size, pixelation parameters and video output settings.
-
-The current configuration uses:
-
-```python
-MODEL_PATH = "models/blurGPT.pt"
-DEVICE = 0
-DETECT_EVERY = 5
-IMGSZ = 640
-```
+Central configuration for the runtime: model path, CUDA device, detection interval, inference size, pixelation parameters, and video encoder settings (`VIDEO_ENCODER`, NVENC CQ/preset, OpenCV codec fallback).
 
 ### `core/jobmanager.py`
 
@@ -70,98 +55,87 @@ Supported input extensions:
 .mp4 .mov .avi .mkv .m4v .wmv
 ```
 
-Job discovery gives priority to `processing/`, followed by `input/`. This allows a video already moved into `processing/` to be picked up before newly submitted videos.
+Job discovery priority: `processing/`, then `input/`.
 
-The normal successful lifecycle is:
+Successful lifecycle:
 
 ```text
-input/
-  ↓
-processing/
-  ↓
-temp/
-  ↓
-output/
+input/ → processing/ → temp/ → output/
+processing/ → input_archive/
+```
 
-processing/ ──→ input_archive/
+Failed lifecycle:
+
+```text
+processing/ → input_error/
+temp partial → deleted
+logs/errors.log ← one line
 ```
 
 ### `core/video.py`
 
-Encapsulates video input/output operations and frame metadata used by the processing loop.
+Video input/output. Validates that the capture opens, resolution is positive, and FPS is positive. Encoding is either:
+
+- FFmpeg pipe with `h264_nvenc`, or
+- OpenCV `VideoWriter` with the configured codec.
+
+Exposes `write_backend` for reports and benchmarks.
 
 ### `core/detector.py`
 
-Loads the Ultralytics YOLO model and performs inference at the configured interval. YOLO results are converted into BlurGPT's internal `Detection` representation.
-
-When a detector call is skipped, the detector delegates frame advancement to `MotionPredictor` instead of running another YOLO inference.
+Loads Ultralytics YOLO once. Runs inference every `detect_every` frames; otherwise advances `MotionPredictor`. `reset()` clears per-video motion/frame state without reloading weights.
 
 ### `core/detection.py`
 
-Defines the internal detection object used by the rest of the application. This prevents downstream modules from depending directly on Ultralytics' result objects.
+Internal detection object (`cls`, box corners, derived center/size). Isolates the rest of the app from Ultralytics types.
 
 ### `core/motion.py`
 
-Implements the current motion-prediction strategy. It stores the previous and latest detector results, calculates motion between them, and predicts intermediate bounding boxes using linear interpolation.
+Linear motion prediction between YOLO calls:
 
-Detection matching currently uses nearest center distance. There is no persistent object ID or full tracker in the current implementation.
+- computes `(dx, dy, dw, dh)` per matched pair
+- applies **translation and size** on intermediate frames
+- matches only the **same class**, within a distance threshold based on the previous box diagonal
+- unmatched detections keep the last box for that interval
+
+No persistent track IDs and no full multi-object tracker.
 
 ### `core/pixelate.py`
 
-Applies pixelation to the regions represented by `Detection` objects. Pixelation size and optional bounding-box margin are configurable through `config.py`.
+Applies pixelation to `Detection` regions (`PIXEL_SIZE`, optional `BOX_MARGIN`).
 
-### `core/report.py`
+### `core/report.py` / `core/benchmark.py`
 
-Collects and displays processing statistics, including timing information accumulated by the processing pipeline.
+In-run statistics (`perf_counter`) and append-only `logs/benchmarks.jsonl` records (FPS, component times, encoder, environment).
 
 ## Detection model
 
-The current runtime uses a single YOLO model:
+Single YOLO model:
 
 ```text
 models/blurGPT.pt
-```
-
-It detects both supported classes:
-
-```text
 0 → license plate
 1 → face
 ```
 
-This is important because the current architecture is a **single-detector pipeline**, not a two-model face/plate pipeline.
-
 ## Motion prediction sequence
 
-With `DETECT_EVERY = 5`, the runtime behaves conceptually like this:
+With `DETECT_EVERY = 5`:
 
 ```text
 Frame 0   → YOLO
-Frame 1   → prediction
-Frame 2   → prediction
-Frame 3   → prediction
-Frame 4   → prediction
+Frame 1–4 → prediction (center + size)
 Frame 5   → YOLO
 ```
 
-The exact predicted bounding box depends on the detections available at the preceding detector calls. If the predictor cannot establish a valid motion estimate, it falls back to the latest detections.
+If no valid motion estimate exists, the predictor falls back to the latest detections.
 
 ## Design boundaries
 
-BlurGPT deliberately separates:
-
-- job/file management
-- video I/O
-- object detection
-- internal detection data
-- motion prediction
-- anonymization
-- reporting
-
-This separation makes it possible to replace or improve individual components without coupling the entire processing pipeline to the YOLO API.
+BlurGPT separates job/file management, video I/O, detection, internal detection data, motion prediction, anonymization, and reporting so each piece can evolve independently.
 
 ## Current limitations
 
-The motion predictor assumes that the set of detections can be meaningfully matched between detector calls. Changes in object count, occlusion, appearance/disappearance, or ambiguous nearest-center matches can therefore produce imperfect predictions.
-
-A dedicated object tracker is the natural next step when prediction quality becomes the limiting factor.
+- Matching is still greedy and lightweight; heavy occlusion or large jumps can produce imperfect boxes.
+- Full trackers remain out of product scope unless a measured quality or FPS gain is shown.
+- Concurrent GPU use (e.g. OBS) reduces processing throughput; use benchmark logs for apples-to-apples comparison.
