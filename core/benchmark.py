@@ -2,12 +2,13 @@ import json
 import platform
 import subprocess
 from datetime import datetime, timezone
-from pathlib import Path
 
 import torch
 
+from core.paths import LOGS_DIR
 
-LOG_PATH = Path("logs/benchmarks.jsonl")
+
+LOG_PATH = LOGS_DIR / "benchmarks.jsonl"
 
 
 def _ffmpeg_version():
