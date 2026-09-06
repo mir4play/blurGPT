@@ -52,6 +52,20 @@ class JobManager:
     def _path(self, folder, job):
         return folder / job.filename
 
+    def _unique_path(self, folder, filename):
+        """Return a non-existing path, preserving existing files."""
+        candidate = folder / filename
+        if not candidate.exists():
+            return candidate
+
+        original = Path(filename)
+        counter = 1
+        while True:
+            candidate = folder / f"{original.stem}_{counter}{original.suffix}"
+            if not candidate.exists():
+                return candidate
+            counter += 1
+
     def get_processing_path(self, job):
         return self._path(self.processing_dir, job)
 
@@ -83,9 +97,9 @@ class JobManager:
 
     def finish(self, job):
         temp_video = self.get_temp_output_path(job)
-        output_video = self.get_output_path(job)
         processing_video = self.get_processing_path(job)
-        archive_video = self.get_archive_path(job)
+        output_video = self._unique_path(self.output_dir, job.filename)
+        archive_video = self._unique_path(self.archive_dir, job.filename)
 
         temp_video.replace(output_video)
         processing_video.replace(archive_video)
@@ -108,15 +122,10 @@ class JobManager:
 
     def fail(self, job, error):
         processing_video = self.get_processing_path(job)
-        error_video = self.get_error_path(job)
+        error_video = self._unique_path(self.error_dir, job.filename)
         temp_video = self.get_temp_output_path(job)
 
         if processing_video.exists():
-            if error_video.exists():
-                stem = error_video.stem
-                suffix = error_video.suffix
-                ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-                error_video = self.error_dir / f"{stem}_{ts}{suffix}"
             processing_video.replace(error_video)
 
         if temp_video.exists():
