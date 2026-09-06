@@ -11,6 +11,7 @@ from core.benchmark import collect_environment, write_benchmark
 from core.detector import Detector
 from core.pixelate import pixelate
 from core.report import Stats, print_report
+from core.settings import load_settings
 from core.video import VideoProcessor
 
 
@@ -29,15 +30,16 @@ class BatchProcessor:
         self.cancel_callback = cancel_callback
         self._cancel_requested = False
         self._current_job = None
+        self.settings = load_settings()
 
         self.run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         self.environment = collect_environment()
 
         self.detector = Detector(
-            config.MODEL_PATH,
-            config.DEVICE,
-            config.DETECT_EVERY,
-            config.IMGSZ,
+            self.settings["model_path"],
+            self.settings["device"],
+            self.settings["detect_every"],
+            self.settings["imgsz"],
         )
 
     def request_cancel(self):
@@ -70,10 +72,10 @@ class BatchProcessor:
         video = VideoProcessor(
             self.manager.get_processing_path(job),
             self.manager.get_temp_output_path(job),
-            config.VIDEO_CODEC,
-            config.VIDEO_ENCODER,
-            config.VIDEO_NVENC_CQ,
-            config.VIDEO_NVENC_PRESET,
+            self.settings["video_codec"],
+            self.settings["video_encoder"],
+            self.settings["video_nvenc_cq"],
+            self.settings["video_nvenc_preset"],
         )
 
         self.detector.reset()
@@ -91,9 +93,9 @@ class BatchProcessor:
                 pixelate(
                     frame=frame,
                     detections=detections,
-                    pixel_size=config.PIXEL_SIZE,
+                    pixel_size=self.settings["pixel_size"],
                     stats=stats,
-                    margin=config.BOX_MARGIN,
+                    margin=self.settings["box_margin"],
                 )
                 video.write(frame, stats)
                 stats.frame_processed()
