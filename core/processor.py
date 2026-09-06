@@ -6,13 +6,16 @@ The engine is deliberately Qt-free. CLI and GUI entry points can both use it.
 from datetime import datetime, timezone
 
 import config
-from tqdm import tqdm
 
 from core.benchmark import collect_environment, write_benchmark
 from core.detector import Detector
 from core.pixelate import pixelate
 from core.report import Stats, print_report
 from core.video import VideoProcessor
+
+
+class ProcessingCancelled(Exception):
+    """Raised when the user requests a graceful cancellation."""
 
 
 class BatchProcessor:
@@ -57,7 +60,7 @@ class BatchProcessor:
 
     def process_job(self, job, current_job, total_jobs):
         if self._is_cancelled():
-            return False
+            raise ProcessingCancelled
 
         self._emit_status(f"Processing {current_job}/{total_jobs}: {job.filename}")
         self.manager.start(job)
@@ -73,12 +76,11 @@ class BatchProcessor:
         )
 
         self.detector.reset()
-        progress = tqdm(total=video.total_frames, disable=True)
 
         try:
             while True:
                 if self._is_cancelled():
-                    raise InterruptedError("Processing cancelled by user")
+                    raise ProcessingCancelled
 
                 ret, frame = video.read()
                 if not ret:
@@ -94,14 +96,13 @@ class BatchProcessor:
                 )
                 video.write(frame, stats)
                 stats.frame_processed()
-                progress.update(1)
 
                 if video.total_frames:
                     self._emit_progress(
-                        int(stats.frames_processed / video.total_frames * 100)
+                        int(stats.frames / video.total_frames * 100)
                     )
+
         finally:
-            progress.close()
             video.release()
 
         self.manager.finish(job)
@@ -115,16 +116,14 @@ class BatchProcessor:
             self.environment,
         )
         self._emit_progress(100)
-        return True
 
     def run(self):
         """Process the current batch and return a summary dictionary."""
-        jobs = self.manager.find_jobs()
-        total_jobs = len(jobs)
+        total_jobs = len(self.manager.find_jobs())
         succeeded = 0
         failed = 0
 
-        if not jobs:
+        if total_jobs == 0:
             self._emit_status("No videos found")
             return {"succeeded": 0, "failed": 0, "cancelled": False}
 
@@ -132,16 +131,17 @@ class BatchProcessor:
             if self._is_cancelled():
                 break
 
-            current_jobs = self.manager.find_jobs()
-            if not current_jobs:
+            jobs = self.manager.find_jobs()
+            if not jobs:
                 break
 
-            job = current_jobs[0]
+            job = jobs[0]
+
             try:
-                if self.process_job(job, index + 1, total_jobs):
-                    succeeded += 1
-            except InterruptedError:
-                self._emit_status("Processing cancelled")
+                self.process_job(job, index + 1, total_jobs)
+                succeeded += 1
+            except ProcessingCancelled:
+                self._emit_status("Cancellation requested — stopping safely")
                 break
             except Exception as error:
                 failed += 1
