@@ -46,9 +46,6 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(900, 620)
         self._build_ui()
 
-        # A lightweight heartbeat is deliberately independent of worker
-        # progress. This lets the UI show elapsed time even while one expensive
-        # YOLO/FFmpeg operation is in progress and no frame callback arrives.
         self._heartbeat = QTimer(self)
         self._heartbeat.setInterval(1000)
         self._heartbeat.timeout.connect(self._update_heartbeat)
@@ -76,14 +73,22 @@ class MainWindow(QMainWindow):
         input_layout = input_card.layout()
         self.queue_list = QListWidget()
         self.queue_list.setMinimumHeight(260)
+        self.queue_list.setSelectionMode(QListWidget.ExtendedSelection)
         input_layout.addWidget(self.queue_list)
 
         buttons = QHBoxLayout()
         self.add_button = QPushButton("Add videos…")
         self.add_button.clicked.connect(self.add_videos)
+        self.remove_button = QPushButton("Remove selected")
+        self.remove_button.setToolTip(
+            "Remove the selected queued videos from BlurGPT's input folder. "
+            "Original source files are not deleted."
+        )
+        self.remove_button.clicked.connect(self.remove_selected_videos)
         self.refresh_button = QPushButton("Refresh")
         self.refresh_button.clicked.connect(self.refresh_jobs)
         buttons.addWidget(self.add_button)
+        buttons.addWidget(self.remove_button)
         buttons.addWidget(self.refresh_button)
         input_layout.addLayout(buttons)
 
@@ -96,6 +101,7 @@ class MainWindow(QMainWindow):
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self.progress.setTextVisible(True)
+        self.progress.setFormat("%p%")
         status_layout.addWidget(self.status_label)
         status_layout.addWidget(self.current_label)
         status_layout.addWidget(self.progress)
@@ -146,6 +152,7 @@ class MainWindow(QMainWindow):
             QPushButton:disabled { color: #777; }
             QPushButton#primaryButton { background: #8ab4f8; color: #202124; font-weight: 700; padding: 11px; }
             QProgressBar { background: #202124; border: 1px solid #3c4043; border-radius: 5px; text-align: center; min-height: 18px; }
+            QProgressBar::chunk { background: #5f6368; border-radius: 4px; }
             """
         )
 
@@ -175,6 +182,7 @@ class MainWindow(QMainWindow):
             f"{count} video{'s' if count != 1 else ''} waiting"
         )
         self.start_button.setEnabled(count > 0)
+        self.remove_button.setEnabled(count > 0)
 
     def add_videos(self):
         files, _ = QFileDialog.getOpenFileNames(
@@ -193,8 +201,6 @@ class MainWindow(QMainWindow):
             if destination.exists():
                 continue
             try:
-                # Never read an entire video into RAM. TV/video files can be
-                # tens of gigabytes, so copy2 streams through the filesystem.
                 shutil.copy2(source, destination)
                 copied += 1
             except OSError as error:
@@ -207,6 +213,50 @@ class MainWindow(QMainWindow):
             self.status_label.setText(
                 f"Added {copied} video{'s' if copied != 1 else ''}"
             )
+
+    def remove_selected_videos(self):
+        selected = self.queue_list.selectedItems()
+        if not selected:
+            self.status_label.setText("Select one or more videos to remove")
+            return
+
+        filenames = []
+        for item in selected:
+            text = item.text()
+            if "]  " in text:
+                filenames.append(text.split("]  ", 1)[1])
+
+        if not filenames:
+            return
+
+        count = len(filenames)
+        answer = QMessageBox.question(
+            self,
+            "Remove from queue",
+            f"Remove {count} selected video{'s' if count != 1 else ''} from the "
+            "BlurGPT queue?\n\nThe original source files will not be deleted.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if answer != QMessageBox.Yes:
+            return
+
+        removed = 0
+        for filename in filenames:
+            path = self.manager.input_dir / filename
+            try:
+                if path.is_file():
+                    path.unlink()
+                    removed += 1
+            except OSError as error:
+                QMessageBox.warning(
+                    self, "Could not remove video", f"{filename}\n\n{error}"
+                )
+
+        self.refresh_jobs()
+        self.status_label.setText(
+            f"Removed {removed} video{'s' if removed != 1 else ''} from queue"
+        )
 
     def start_processing(self):
         if self.thread is not None and self.thread.isRunning():
@@ -295,6 +345,7 @@ class MainWindow(QMainWindow):
 
     def _set_processing_state(self, running):
         self.add_button.setEnabled(not running)
+        self.remove_button.setEnabled(not running)
         self.refresh_button.setEnabled(not running)
         self.start_button.setEnabled(not running and bool(self.manager.find_jobs()))
         self.cancel_button.setEnabled(running)
