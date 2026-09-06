@@ -5,8 +5,6 @@ The engine is deliberately Qt-free. CLI and GUI entry points can both use it.
 
 from datetime import datetime, timezone
 
-import config
-
 from core.benchmark import collect_environment, write_benchmark
 from core.detector import Detector
 from core.pixelate import pixelate
@@ -131,7 +129,7 @@ class BatchProcessor:
             job.filename,
             stats,
             video,
-            config,
+            self.settings,
             self.run_id,
             self.environment,
         )
