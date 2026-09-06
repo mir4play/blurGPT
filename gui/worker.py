@@ -17,6 +17,7 @@ class ProcessingWorker(QObject):
     def __init__(self):
         super().__init__()
         self.processor = None
+        self._cancel_requested = False
 
     @Slot()
     def run(self):
@@ -27,6 +28,8 @@ class ProcessingWorker(QObject):
                 progress_callback=self.progress.emit,
                 status_callback=self.status.emit,
             )
+            if self._cancel_requested:
+                self.processor.request_cancel()
             result = self.processor.run()
             self.finished.emit(result)
         except Exception as error:
@@ -34,5 +37,9 @@ class ProcessingWorker(QObject):
 
     @Slot()
     def cancel(self):
+        # Keep the request even if the user clicks Cancel while the worker is
+        # still initializing the model. It will be applied immediately after
+        # BatchProcessor is created.
+        self._cancel_requested = True
         if self.processor is not None:
             self.processor.request_cancel()
