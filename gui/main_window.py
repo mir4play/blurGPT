@@ -4,9 +4,10 @@ The window never runs video processing in the Qt event-loop thread. Heavy work
 is delegated to ProcessingWorker/QThread so the interface remains responsive.
 """
 
+import shutil
 from pathlib import Path
 
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QTimer, QThread
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -37,10 +38,20 @@ class MainWindow(QMainWindow):
         self.thread = None
         self.worker = None
         self._closing_after_processing = False
+        self._processing_started_at = None
+        self._last_progress = 0
 
         self.setWindowTitle("BlurGPT")
         self.setMinimumSize(900, 620)
         self._build_ui()
+
+        # A lightweight heartbeat is deliberately independent of worker
+        # progress. This lets the UI show elapsed time even while one expensive
+        # YOLO/FFmpeg operation is in progress and no frame callback arrives.
+        self._heartbeat = QTimer(self)
+        self._heartbeat.setInterval(1000)
+        self._heartbeat.timeout.connect(self._update_heartbeat)
+
         self.refresh_jobs()
 
     def _build_ui(self):
@@ -87,6 +98,10 @@ class MainWindow(QMainWindow):
         status_layout.addWidget(self.status_label)
         status_layout.addWidget(self.current_label)
         status_layout.addWidget(self.progress)
+
+        self.heartbeat_label = QLabel("Idle")
+        self.heartbeat_label.setObjectName("secondary")
+        status_layout.addWidget(self.heartbeat_label)
 
         action_buttons = QHBoxLayout()
         self.start_button = QPushButton("Start processing")
@@ -177,7 +192,9 @@ class MainWindow(QMainWindow):
             if destination.exists():
                 continue
             try:
-                destination.write_bytes(source.read_bytes())
+                # Never read an entire video into RAM. TV/video files can be
+                # tens of gigabytes, so copy2 streams through the filesystem.
+                shutil.copy2(source, destination)
                 copied += 1
             except OSError as error:
                 QMessageBox.warning(
@@ -199,7 +216,7 @@ class MainWindow(QMainWindow):
         self.worker.moveToThread(self.thread)
 
         self.thread.started.connect(self.worker.run)
-        self.worker.progress.connect(self.progress.setValue)
+        self.worker.progress.connect(self._on_progress)
         self.worker.status.connect(self._on_status)
         self.worker.finished.connect(self._on_finished)
         self.worker.failed.connect(self._on_failed)
@@ -209,7 +226,11 @@ class MainWindow(QMainWindow):
 
         self._set_processing_state(True)
         self.progress.setValue(0)
+        self._last_progress = 0
+        self._processing_started_at = __import__("time").monotonic()
+        self.heartbeat_label.setText("Worker starting…")
         self.status_label.setText("Starting…")
+        self._heartbeat.start()
         self.thread.start()
 
     def cancel_processing(self):
@@ -219,12 +240,30 @@ class MainWindow(QMainWindow):
         self.status_label.setText("Cancellation requested…")
         self.worker.cancel()
 
+    def _on_progress(self, value):
+        self._last_progress = value
+        self.progress.setValue(value)
+
     def _on_status(self, message):
         self.status_label.setText(message)
         if ": " in message:
             self.current_label.setText(message.split(": ", 1)[1])
 
+    def _update_heartbeat(self):
+        if self._processing_started_at is None:
+            return
+        import time
+
+        elapsed = int(time.monotonic() - self._processing_started_at)
+        minutes, seconds = divmod(elapsed, 60)
+        self.heartbeat_label.setText(
+            f"Worker active • elapsed {minutes:02d}:{seconds:02d} • "
+            f"last frame progress {self._last_progress}%"
+        )
+
     def _on_finished(self, result):
+        self._heartbeat.stop()
+        self._processing_started_at = None
         if result.get("cancelled"):
             self.status_label.setText("Cancelled safely")
         else:
@@ -232,12 +271,16 @@ class MainWindow(QMainWindow):
                 f"Finished — {result['succeeded']} succeeded, "
                 f"{result['failed']} failed"
             )
+        self.heartbeat_label.setText("Idle")
         self._set_processing_state(False)
         self.refresh_jobs()
         if self._closing_after_processing:
             self.close()
 
     def _on_failed(self, message):
+        self._heartbeat.stop()
+        self._processing_started_at = None
+        self.heartbeat_label.setText("Worker stopped")
         self._set_processing_state(False)
         QMessageBox.critical(self, "BlurGPT processing error", message)
 
