@@ -4,6 +4,7 @@ from pathlib import Path
 from ultralytics import YOLO
 from core.detection import Detection
 from core.motion import MotionPredictor
+from core.paths import ROOT_DIR
 
 
 class Detector:
@@ -11,12 +12,15 @@ class Detector:
     def __init__(self, model_path, device=0, detect_every=1, imgsz=640):
 
         model_file = Path(model_path)
+        if not model_file.is_absolute():
+            model_file = ROOT_DIR / model_file
+
         if not model_file.is_file():
             raise FileNotFoundError(
                 f"YOLO model not found: {model_file}"
             )
 
-        self.model = YOLO(model_path)
+        self.model = YOLO(str(model_file))
         self.device = device
         self.detect_every = detect_every
         self.imgsz = imgsz
