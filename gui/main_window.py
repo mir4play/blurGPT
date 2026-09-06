@@ -37,6 +37,7 @@ class MainWindow(QMainWindow):
         self._closing_after_processing = False
         self._processing_started_at = None
         self._last_progress = 0
+        self._advanced_mode = False
 
         self.setWindowTitle("BlurGPT")
         self.setMinimumSize(900, 620)
@@ -53,12 +54,22 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(24, 24, 24, 24)
         root.setSpacing(16)
 
+        header = QHBoxLayout()
+        title_box = QVBoxLayout()
         title = QLabel("BlurGPT")
         title.setObjectName("title")
         subtitle = QLabel("Video anonymization — faces and license plates")
         subtitle.setObjectName("subtitle")
-        root.addWidget(title)
-        root.addWidget(subtitle)
+        title_box.addWidget(title)
+        title_box.addWidget(subtitle)
+        header.addLayout(title_box)
+        header.addStretch()
+        self.mode_button = QPushButton("Advanced")
+        self.mode_button.setCheckable(True)
+        self.mode_button.setToolTip("Show detailed live processing metrics")
+        self.mode_button.clicked.connect(self._toggle_advanced)
+        header.addWidget(self.mode_button)
+        root.addLayout(header)
 
         content = QGridLayout()
         content.setHorizontalSpacing(16)
@@ -94,15 +105,26 @@ class MainWindow(QMainWindow):
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
-        self.progress.setTextVisible(True)
-        self.progress.setFormat("%p%")
+        self.progress.setTextVisible(False)
         status_layout.addWidget(self.status_label)
         status_layout.addWidget(self.current_label)
         status_layout.addWidget(self.progress)
 
+        self.progress_metrics = QLabel("0%")
+        self.progress_metrics.setObjectName("progressMetrics")
+        status_layout.addWidget(self.progress_metrics)
+
         self.heartbeat_label = QLabel("Idle")
         self.heartbeat_label.setObjectName("secondary")
         status_layout.addWidget(self.heartbeat_label)
+
+        self.metrics_card = self._card("Live metrics")
+        metrics_layout = self.metrics_card.layout()
+        self.metrics_label = QLabel("Advanced metrics are available while processing.")
+        self.metrics_label.setObjectName("metrics")
+        self.metrics_label.setWordWrap(True)
+        metrics_layout.addWidget(self.metrics_label)
+        self.metrics_card.setVisible(False)
 
         action_buttons = QHBoxLayout()
         self.start_button = QPushButton("Start processing")
@@ -120,8 +142,10 @@ class MainWindow(QMainWindow):
 
         content.addWidget(input_card, 0, 0)
         content.addWidget(status_card, 0, 1)
+        content.addWidget(self.metrics_card, 1, 1)
         content.setColumnStretch(0, 3)
         content.setColumnStretch(1, 2)
+        content.setRowStretch(0, 1)
         root.addLayout(content)
 
         info = QLabel(
@@ -142,13 +166,15 @@ class MainWindow(QMainWindow):
             QLabel#subtitle { color: #9aa0a6; margin-bottom: 8px; }
             QLabel#secondary, QLabel#info { color: #9aa0a6; }
             QLabel#info { padding: 8px; }
+            QLabel#progressMetrics { font-size: 16px; font-weight: 600; padding: 2px 0; }
+            QLabel#metrics { line-height: 1.4; }
             QFrame#card { background: #292a2d; border: 1px solid #3c4043; border-radius: 10px; }
             QListWidget { background: #202124; border: 1px solid #3c4043; border-radius: 6px; padding: 6px; }
             QPushButton { background: #3c4043; border: 1px solid #5f6368; border-radius: 6px; padding: 9px 14px; }
             QPushButton:hover { background: #4a4d51; }
             QPushButton:disabled { color: #777; }
             QPushButton#primaryButton { background: #8ab4f8; color: #202124; font-weight: 700; padding: 11px; }
-            QProgressBar { background: #202124; border: 1px solid #3c4043; border-radius: 5px; text-align: center; min-height: 18px; }
+            QProgressBar { background: #202124; border: 1px solid #3c4043; border-radius: 5px; min-height: 18px; }
             QProgressBar::chunk { background: #5f6368; border-radius: 4px; }
             """
         )
@@ -233,6 +259,12 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             self.status_label.setText("Settings saved — ready for the next run")
 
+    def _toggle_advanced(self, checked):
+        self._advanced_mode = bool(checked)
+        self.mode_button.setText("Clean" if checked else "Advanced")
+        self.metrics_card.setVisible(checked)
+        self.adjustSize()
+
     def start_processing(self):
         if self.thread is not None and self.thread.isRunning():
             return
@@ -242,6 +274,7 @@ class MainWindow(QMainWindow):
         self.thread.started.connect(self.worker.run)
         self.worker.progress.connect(self._on_progress)
         self.worker.status.connect(self._on_status)
+        self.worker.metrics.connect(self._on_metrics)
         self.worker.finished.connect(self._on_finished)
         self.worker.failed.connect(self._on_failed)
         self.worker.finished.connect(self.thread.quit)
@@ -249,6 +282,7 @@ class MainWindow(QMainWindow):
         self.thread.finished.connect(self._cleanup_worker)
         self._set_processing_state(True)
         self.progress.setValue(0)
+        self.progress_metrics.setText("0%")
         self._last_progress = 0
         self._processing_started_at = time.monotonic()
         self.heartbeat_label.setText("Worker starting…")
@@ -266,11 +300,45 @@ class MainWindow(QMainWindow):
     def _on_progress(self, value):
         self._last_progress = value
         self.progress.setValue(value)
+        self.progress_metrics.setText(f"{value}%")
 
     def _on_status(self, message):
         self.status_label.setText(message)
         if ": " in message:
             self.current_label.setText(message.split(": ", 1)[1])
+
+    def _on_metrics(self, metrics):
+        percent = metrics.get("percent", 0.0)
+        frames = metrics.get("frames", 0)
+        total = metrics.get("total_frames", 0)
+        fps = metrics.get("fps", 0.0)
+        source_fps = metrics.get("video_fps", 0.0)
+        elapsed = metrics.get("elapsed", 0.0)
+        yolo = metrics.get("yolo", 0.0)
+        pixel = metrics.get("pixel", 0.0)
+        write = metrics.get("write", 0.0)
+        encoder = metrics.get("encoder") or "—"
+        resolution = f"{metrics.get('width', 0)}×{metrics.get('height', 0)}"
+        device = metrics.get("device")
+        device_text = f"GPU {device}" if isinstance(device, int) else str(device or "—")
+
+        if total:
+            self.progress_metrics.setText(
+                f"{frames:,} / {total:,} frames  ·  {percent:.1f}%  ·  "
+                f"{fps:.1f} FPS"
+            )
+        else:
+            self.progress_metrics.setText(f"{frames:,} frames  ·  {fps:.1f} FPS")
+
+        minutes, seconds = divmod(int(elapsed), 60)
+        self.metrics_label.setText(
+            f"<b>Throughput</b>  {fps:.2f} FPS average<br>"
+            f"<b>Source</b>  {source_fps:.2f} FPS  ·  {resolution}<br>"
+            f"<b>Elapsed</b>  {minutes:02d}:{seconds:02d}<br>"
+            f"<b>YOLO</b>  {yolo:.2f}s cumulative  ·  "
+            f"<b>Pixelation</b>  {pixel:.2f}s  ·  <b>Encoding</b>  {write:.2f}s<br>"
+            f"<b>Encoder</b>  {encoder}  ·  <b>Device</b>  {device_text}"
+        )
 
     def _update_heartbeat(self):
         if self._processing_started_at is None:
