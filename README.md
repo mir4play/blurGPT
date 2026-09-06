@@ -1,5 +1,5 @@
 # Result Preview
-[![Example of result (YOUTUBE)](https://img.youtube.com/vi/kYm4COCCH0U/0.jpg)](https://www.youtube.com/watch?v=n8U5uIlkz40=)
+[![Example of result (YOUTUBE)](https://img.youtube.com/vi/kYm4COCCH0U/0.jpg)](https://www.youtube.com/watch?v=n8U5uIlkz40)
 
 # BlurGPT
 
@@ -182,9 +182,9 @@ Runtime settings are centralized in `config.py`. Important options include:
 | `VIDEO_CODEC` | `mp4v` | OpenCV fallback codec |
 | `VIDEO_NVENC_CQ` | `23` | NVENC constant-quality target |
 | `VIDEO_NVENC_PRESET` | `p4` | NVENC performance/quality preset |
-| `SHOW_VIDEO` | `False` | Display frames during processing |
-| `SAVE_VIDEO` | `True` | Enable video output |
-| `SHOW_REPORT` | `True` | Show processing statistics |
+| `SHOW_VIDEO` | `False` | Legacy configuration flag; not currently used by the runtime |
+| `SAVE_VIDEO` | `True` | Legacy configuration flag; video output is currently always enabled |
+| `SHOW_REPORT` | `True` | Legacy configuration flag; reports are currently always printed |
 
 `DETECT_EVERY = 5` means YOLO is not executed on every frame. Between detector calls, `MotionPredictor` estimates object position and size from the previous detections.
 
@@ -241,7 +241,7 @@ This means a high-value optimization target is the video-output path rather than
 
 Version **0.5.0** adds an FFmpeg pipe using `h264_nvenc`, moving H.264 encoding to the NVIDIA GPU. The legacy OpenCV `mp4v` path remains available for compatibility.
 
-Throughput also depends on whether other GPU clients (for example OBS Studio) share the same device during the run. Compare `logs/benchmarks.jsonl` entries with that context in mind.
+Throughput varies with video content and system workload. Compare `logs/benchmarks.jsonl` entries with their recorded environment and run context rather than treating a single FPS number as universal.
 
 ---
 
@@ -308,12 +308,13 @@ BlurGPT/
 - Progress reporting and benchmark logging
 - Motion prediction with size interpolation and class-aware matching
 - Detector reuse across the batch
+- Model-file validation before detector initialization
 - Modular architecture
 - Internal `Detection` abstraction
 
 ### In development / planned
 
-- Further I/O validation (e.g. missing model file before a job)
+- Optional cleanup of unused legacy configuration flags
 - Model packaging improvements (Git LFS / release assets)
 - Additional anonymization methods
 - GUI
