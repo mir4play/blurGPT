@@ -23,10 +23,11 @@ class BatchProcessor:
     """Process BlurGPT jobs without depending on a user interface."""
 
     def __init__(self, manager, progress_callback=None, status_callback=None,
-                 cancel_callback=None):
+                 metrics_callback=None, cancel_callback=None):
         self.manager = manager
         self.progress_callback = progress_callback
         self.status_callback = status_callback
+        self.metrics_callback = metrics_callback
         self.cancel_callback = cancel_callback
         self._cancel_requested = False
         self._current_job = None
@@ -60,6 +61,17 @@ class BatchProcessor:
         if self.progress_callback is not None:
             self.progress_callback(value)
 
+    def _emit_metrics(self, stats, video):
+        if self.metrics_callback is not None:
+            self.metrics_callback(stats.snapshot(
+                total_frames=video.total_frames,
+                video_fps=video.fps,
+                width=video.width,
+                height=video.height,
+                encoder=video.write_backend,
+                device=self.settings["device"],
+            ))
+
     def process_job(self, job, current_job, total_jobs):
         if self._is_cancelled():
             raise ProcessingCancelled
@@ -79,6 +91,7 @@ class BatchProcessor:
         )
 
         self.detector.reset()
+        self._emit_metrics(stats, video)
 
         try:
             while True:
@@ -104,6 +117,11 @@ class BatchProcessor:
                     self._emit_progress(
                         int(stats.frames / video.total_frames * 100)
                     )
+
+                # Ten-ish UI updates per second are enough for live metrics and
+                # avoid turning Qt signal delivery into part of the hot path.
+                if stats.frames == 1 or stats.frames % 10 == 0:
+                    self._emit_metrics(stats, video)
         finally:
             video.release()
 
@@ -118,6 +136,7 @@ class BatchProcessor:
             self.environment,
         )
         self._emit_progress(100)
+        self._emit_metrics(stats, video)
         self._current_job = None
 
     def run(self):
