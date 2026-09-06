@@ -11,6 +11,7 @@ class ProcessingWorker(QObject):
 
     progress = Signal(int)
     status = Signal(str)
+    metrics = Signal(dict)
     finished = Signal(dict)
     failed = Signal(str)
 
@@ -27,6 +28,7 @@ class ProcessingWorker(QObject):
                 manager,
                 progress_callback=self.progress.emit,
                 status_callback=self.status.emit,
+                metrics_callback=self.metrics.emit,
             )
             if self._cancel_requested:
                 self.processor.request_cancel()
