@@ -26,6 +26,8 @@ input_error/*
 
 logs/*
 !logs/.gitkeep
+!logs/benchmarks.jsonl
+!logs/errors.log
 
 # ==========================================================
 # Training
