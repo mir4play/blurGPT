@@ -25,8 +25,6 @@ DEFAULTS: dict[str, Any] = {
     "video_nvenc_preset": config.VIDEO_NVENC_PRESET,
 }
 
-# Presets describe the intended trade-off; they are copied into the editable
-# controls by the GUI and are never written into config.py.
 PROFILES: dict[str, dict[str, Any]] = {
     "Recommended": {
         "detect_every": 5,
@@ -68,6 +66,20 @@ def profile_values(name: str) -> dict[str, Any]:
     values = DEFAULTS.copy()
     values.update(PROFILES[name])
     return values
+
+
+def profile_name(values: dict[str, Any]) -> str:
+    """Return the matching built-in profile name, or Custom."""
+    validated = validate_settings(values)
+    comparable_keys = (
+        "detect_every", "imgsz", "pixel_size", "box_margin",
+        "video_encoder", "video_codec", "video_nvenc_cq", "video_nvenc_preset",
+    )
+    for name in PROFILES:
+        profile = profile_values(name)
+        if all(validated[key] == profile[key] for key in comparable_keys):
+            return name
+    return "Custom"
 
 
 def _normalise(values: dict[str, Any]) -> dict[str, Any]:
@@ -141,7 +153,6 @@ def load_settings() -> dict[str, Any]:
             raise ValueError("settings.json must contain a JSON object")
         return _normalise(payload.get("settings", payload))
     except (OSError, ValueError, json.JSONDecodeError):
-        # A damaged settings file should never prevent BlurGPT from starting.
         return DEFAULTS.copy()
 
 
@@ -162,7 +173,7 @@ def save_settings(values: dict[str, Any]) -> None:
 
 
 def reset_settings() -> dict[str, Any]:
-    """Restore the recommended profile and persist it."""
+    """Return recommended values and persist them."""
     values = profile_values("Recommended")
     save_settings(values)
     return values
