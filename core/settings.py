@@ -79,6 +79,56 @@ def _normalise(values: dict[str, Any]) -> dict[str, Any]:
     return merged
 
 
+def validate_settings(values: dict[str, Any]) -> dict[str, Any]:
+    """Return a normalized, safe settings dictionary for the processing engine."""
+    settings = _normalise(values)
+
+    settings["model_path"] = str(settings["model_path"])
+    if not settings["model_path"].strip():
+        raise ValueError("Model path cannot be empty")
+
+    device = settings["device"]
+    if device != "cpu":
+        try:
+            device = int(device)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Device must be 'cpu' or a CUDA device index") from exc
+        if device < 0:
+            raise ValueError("CUDA device index cannot be negative")
+    settings["device"] = device
+
+    integer_ranges = {
+        "detect_every": (1, 100),
+        "imgsz": (320, 4096),
+        "pixel_size": (1, 100),
+        "box_margin": (0, 200),
+        "video_nvenc_cq": (0, 51),
+    }
+    for key, (minimum, maximum) in integer_ranges.items():
+        try:
+            value = int(settings[key])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid value for {key}") from exc
+        if not minimum <= value <= maximum:
+            raise ValueError(f"{key} must be between {minimum} and {maximum}")
+        settings[key] = value
+
+    if settings["imgsz"] % 32 != 0:
+        raise ValueError("Inference size must be a multiple of 32")
+
+    if settings["video_encoder"] not in {"h264_nvenc", "opencv"}:
+        raise ValueError("Unsupported video encoder")
+    if settings["video_codec"] != "mp4v":
+        raise ValueError("Unsupported OpenCV video codec")
+
+    preset = str(settings["video_nvenc_preset"]).lower()
+    if preset not in {f"p{i}" for i in range(1, 8)}:
+        raise ValueError("NVENC preset must be between p1 and p7")
+    settings["video_nvenc_preset"] = preset
+
+    return settings
+
+
 def load_settings() -> dict[str, Any]:
     """Load GUI settings, creating a defaults file when none exists."""
     if not SETTINGS_PATH.exists():
@@ -97,10 +147,11 @@ def load_settings() -> dict[str, Any]:
 
 def save_settings(values: dict[str, Any]) -> None:
     """Persist validated GUI settings without modifying Python source files."""
+    validated = validate_settings(values)
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
     payload = {
         "version": SETTINGS_VERSION,
-        "settings": _normalise(values),
+        "settings": validated,
     }
     temporary = SETTINGS_PATH.with_suffix(".json.tmp")
     temporary.write_text(
@@ -111,7 +162,7 @@ def save_settings(values: dict[str, Any]) -> None:
 
 
 def reset_settings() -> dict[str, Any]:
-    """Restore the recommended source-level defaults and persist them."""
+    """Restore the recommended profile and persist it."""
     values = profile_values("Recommended")
     save_settings(values)
     return values
