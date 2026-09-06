@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.jobmanager import JobManager
+from core.paths import ROOT_DIR
 from gui.settings_dialog import SettingsDialog
 from gui.worker import ProcessingWorker
 
@@ -205,7 +206,7 @@ class MainWindow(QMainWindow):
 
     def add_videos(self):
         files, _ = QFileDialog.getOpenFileNames(
-            self, "Select videos", str(Path.cwd()),
+            self, "Select videos", str(ROOT_DIR),
             "Videos (*.mp4 *.mov *.avi *.mkv *.m4v *.wmv)",
         )
         if not files:
