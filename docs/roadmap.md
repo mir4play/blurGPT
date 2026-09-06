@@ -4,59 +4,39 @@ This roadmap describes the next technical priorities for BlurGPT. It is intentio
 
 ## Current priorities
 
-### 1. Improve detection/tracking robustness
+### 1. Model development
 
-The current pipeline uses one YOLO model for both faces and license plates and uses lightweight motion prediction between detector calls.
+Continue improving training data and model versions for combined face and license-plate detection. Keep training experiments separate from the runtime so the README always describes the model shipped with the application.
 
-Next improvements should focus on reducing temporal errors caused by:
+### 2. Remaining batch / I/O hardening
 
-- objects appearing or disappearing between detector calls
-- occlusion
-- ambiguous nearest-center matches
-- changes in object count
-- rapid object movement
+Small follow-ups after 0.5.0:
 
-Potential approaches include a dedicated object tracker, IoU-based matching, ByteTrack or BoT-SORT.
+- fail early if `models/blurGPT.pt` is missing
+- optional cleanup of unused config flags (`SHOW_VIDEO`, `SAVE_VIDEO`, `SHOW_REPORT`, `CLASSES`)
 
-### 2. Better exception handling and recovery
+### 3. Model packaging
 
-Strengthen failure handling around:
-
-- unreadable/corrupt video files
-- decoder failures
-- encoder failures
-- missing model files
-- invalid configuration
-- interrupted processing
-
-The goal is to make batch processing fail gracefully and preserve enough state to diagnose the affected job.
-
-### 3. Batch-processing improvements
-
-Improve the job lifecycle and reporting for larger collections of videos, including clearer job states and more useful failure information.
-
-### 4. Model development
-
-The project is continuing to develop and evaluate improved training data and model versions for combined face and license-plate detection.
-
-Model-training experiments should be documented separately from the runtime architecture so that the README always describes the model actually shipped with the application.
+The runtime weight is still a normal git blob (~44 MB). Consider Git LFS or a release asset + download-on-first-run if the model is iterated often or cloned on multiple machines.
 
 ## Under evaluation
 
-- Kalman Filter
-- Optical Flow
-- Object Tracking
 - Additional anonymization methods
 - GUI
+- Further motion quality work only if measured leaks remain after the 0.5.0 matching/size fixes (full ByteTrack/BoT-SORT still out of scope unless quality or FPS gains are demonstrated)
 
 ## Completed since the previous roadmap
 
-The following items previously appeared as future work but are now part of the current implementation:
+The following items previously appeared as future work but are now part of the current implementation (through **0.5.0**):
 
 - Combined face and license-plate detection through a single runtime model
-- Motion prediction between YOLO detections
+- Motion prediction between YOLO detections (including size `dw`/`dh`)
+- Lightweight class-aware matching with distance threshold
 - Modular detector/detection architecture
-- Batch job workflow
-- Automatic input archiving
+- Batch job workflow with `input_archive/` and `input_error/`
+- Per-job exception handling so one bad file does not stop the batch
+- Detector loaded once and reused across the batch
+- NVIDIA NVENC encoding path with OpenCV fallback
+- Structured benchmark logging (`logs/benchmarks.jsonl`)
 
 These should not be re-added to the planned-work list unless a new implementation is being proposed.
