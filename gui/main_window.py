@@ -4,7 +4,7 @@ import shutil
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QThread, QTimer
+from PySide6.QtCore import QThread, QTimer, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -198,7 +199,10 @@ class MainWindow(QMainWindow):
         self.queue_list.clear()
         jobs = self.manager.find_jobs()
         for job in jobs:
-            self.queue_list.addItem(f"[{job.source}]  {job.filename}")
+            item = QListWidgetItem(f"[{job.source}]  {job.filename}")
+            item.setData(Qt.UserRole, job.source)
+            item.setData(Qt.UserRole + 1, job.filename)
+            self.queue_list.addItem(item)
         count = len(jobs)
         self.status_label.setText(f"{count} video{'s' if count != 1 else ''} waiting")
         self.start_button.setEnabled(count > 0)
@@ -235,7 +239,33 @@ class MainWindow(QMainWindow):
         if not selected:
             self.status_label.setText("Select one or more videos to remove")
             return
-        filenames = [item.text().split("]  ", 1)[1] for item in selected if "]  " in item.text()]
+
+        processing_items = [
+            item for item in selected
+            if item.data(Qt.UserRole) == self.manager.processing_dir.name
+        ]
+        if processing_items:
+            names = [item.data(Qt.UserRole + 1) for item in processing_items]
+            QMessageBox.information(
+                self,
+                "Video is being processed",
+                "The following video is in processing/ and cannot be removed from the queue:\n\n"
+                + "\n".join(names)
+                + "\n\n"
+                "A processing job must be cancelled by BlurGPT so its temporary output can "
+                "be cleaned up safely."
+            )
+            return
+
+        filenames = [
+            item.data(Qt.UserRole + 1)
+            for item in selected
+            if item.data(Qt.UserRole) == self.manager.input_dir.name
+        ]
+        if not filenames:
+            self.status_label.setText("No removable input videos selected")
+            return
+
         count = len(filenames)
         answer = QMessageBox.question(
             self, "Remove from queue",
@@ -410,8 +440,9 @@ class MainWindow(QMainWindow):
 
 def run():
     """Start the Qt application."""
-    app = QApplication.instance() or QApplication([])
-    app.setApplicationName("BlurGPT")
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
     window = MainWindow()
     window.show()
     return app.exec()
