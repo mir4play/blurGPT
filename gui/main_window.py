@@ -212,11 +212,12 @@ class MainWindow(QMainWindow):
         if not files:
             return
         copied = 0
+        renamed = 0
         for filename in files:
             source = Path(filename)
-            destination = self.manager.input_dir / source.name
-            if destination.exists():
-                continue
+            destination = self.manager.get_unique_input_path(source.name)
+            if destination.name != source.name:
+                renamed += 1
             try:
                 shutil.copy2(source, destination)
                 copied += 1
@@ -224,7 +225,10 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Could not add video", f"{source.name}\n\n{error}")
         self.refresh_jobs()
         if copied:
-            self.status_label.setText(f"Added {copied} video{'s' if copied != 1 else ''}")
+            message = f"Added {copied} video{'s' if copied != 1 else ''}"
+            if renamed:
+                message += f" — {renamed} renamed to avoid filename collision"
+            self.status_label.setText(message)
 
     def remove_selected_videos(self):
         selected = self.queue_list.selectedItems()
