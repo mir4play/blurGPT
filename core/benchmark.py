@@ -1,20 +1,26 @@
 import json
 import platform
+import shutil
 import subprocess
 from datetime import datetime, timezone
 
 import torch
 
-from core.paths import LOGS_DIR
+from core.paths import BUNDLED_FFMPEG_PATH, LOGS_DIR
 
 
 LOG_PATH = LOGS_DIR / "benchmarks.jsonl"
 
 
 def _ffmpeg_version():
+    """Return the version of the same FFmpeg resolution used by VideoProcessor."""
+    bundled = BUNDLED_FFMPEG_PATH
+    ffmpeg = str(bundled) if bundled.is_file() else shutil.which("ffmpeg")
+    if not ffmpeg:
+        return "not available"
     try:
         result = subprocess.run(
-            ["ffmpeg", "-version"],
+            [ffmpeg, "-version"],
             capture_output=True,
             text=True,
             timeout=5,
@@ -22,7 +28,7 @@ def _ffmpeg_version():
         )
         first_line = result.stdout.splitlines()
         return first_line[0] if first_line else "unknown"
-    except (FileNotFoundError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError):
         return "not available"
 
 
@@ -57,12 +63,7 @@ def _setting(settings, name):
 
 
 def write_benchmark(video_name, stats, video, settings, run_id, environment):
-    """Append one structured processing record to the benchmark history.
-
-    ``settings`` may be the persistent settings dict used by BatchProcessor or
-    the legacy config module used by older callers. Supporting both keeps old
-    integrations readable while the CLI migrates to the shared engine.
-    """
+    """Append one structured processing record to the benchmark history."""
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     device = _setting(settings, "device")
@@ -104,10 +105,19 @@ def write_benchmark(video_name, stats, video, settings, run_id, environment):
 
 
 def _profile_name(settings):
-    """Identify the built-in profile represented by the effective settings."""
+    """Identify the built-in profile represented by effective settings."""
     from core.settings import profile_name
 
     try:
-        return profile_name(settings)
-    except (ValueError, TypeError):
+        if isinstance(settings, dict):
+            effective = settings
+        else:
+            keys = (
+                "model_path", "device", "detect_every", "imgsz", "pixel_size",
+                "box_margin", "video_encoder", "video_codec",
+                "video_nvenc_cq", "video_nvenc_preset",
+            )
+            effective = {key: getattr(settings, key) for key in keys}
+        return profile_name(effective)
+    except (AttributeError, ValueError, TypeError):
         return "Custom"
