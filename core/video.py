@@ -34,7 +34,7 @@ class VideoProcessor:
         self.cap = cv2.VideoCapture(self.input_video)
 
         if not self.cap.isOpened():
-            raise RuntimeError(f"Erro ao abrir vídeo: {self.input_video}")
+            raise RuntimeError(f"Could not open video: {self.input_video}")
 
         self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -44,14 +44,14 @@ class VideoProcessor:
         if self.width <= 0 or self.height <= 0:
             self.cap.release()
             raise RuntimeError(
-                f"Resolução inválida no vídeo: {self.input_video} "
+                f"Invalid video resolution: {self.input_video} "
                 f"({self.width}x{self.height})"
             )
 
         if self.fps <= 0:
             self.cap.release()
             raise RuntimeError(
-                f"FPS inválido (0 ou negativo) no vídeo: {self.input_video}"
+                f"Invalid video FPS (zero or negative): {self.input_video}"
             )
 
         if encoder == "h264_nvenc":
@@ -73,7 +73,7 @@ class VideoProcessor:
         if not self.writer.isOpened():
             self.cap.release()
             raise RuntimeError(
-                f"Não foi possível abrir o VideoWriter com codec '{codec}'."
+                f"Could not open VideoWriter with codec '{codec}'."
             )
 
         self.write_backend = f"opencv:{codec}"
@@ -97,9 +97,9 @@ class VideoProcessor:
         if ffmpeg_path is None:
             self.cap.release()
             raise RuntimeError(
-                "FFmpeg não encontrado. Coloque ffmpeg.exe em 'ffmpeg/' "
-                "na pasta do BlurGPT ou instale o FFmpeg e coloque-o no PATH "
-                "ou use VIDEO_ENCODER='opencv'."
+                "FFmpeg not found. Put ffmpeg.exe in the BlurGPT 'ffmpeg/' "
+                "folder, install FFmpeg and add it to PATH, or use "
+                "VIDEO_ENCODER='opencv'."
             )
 
         command = [
@@ -131,11 +131,11 @@ class VideoProcessor:
         self.write_backend = "ffmpeg:h264_nvenc"
 
     def read(self):
-        """Lê um frame do vídeo."""
+        """Read one frame from the input video."""
         return self.cap.read()
 
     def write(self, frame, stats=None):
-        """Escreve um frame no vídeo de saída."""
+        """Write one frame to the output video."""
         t0 = time.perf_counter()
 
         if self.ffmpeg is not None:
@@ -146,7 +146,7 @@ class VideoProcessor:
                     "utf-8", errors="replace"
                 )
                 raise RuntimeError(
-                    f"FFmpeg/NVENC falhou durante a gravação: {error.strip()}"
+                    f"FFmpeg/NVENC failed while writing video: {error.strip()}"
                 ) from exc
         else:
             self.writer.write(frame)
@@ -155,28 +155,29 @@ class VideoProcessor:
             stats.tempo_write += time.perf_counter() - t0
 
     def release(self):
-        """Libera recursos e finaliza o encoder de forma idempotente."""
+        """Release resources and finalize the encoder exactly once."""
         if self._released:
             return
 
-        self._released = True
         self.cap.release()
 
-        if self.ffmpeg is not None:
-            if self.ffmpeg.stdin is not None:
-                self.ffmpeg.stdin.close()
+        try:
+            if self.ffmpeg is not None:
+                if self.ffmpeg.stdin is not None:
+                    self.ffmpeg.stdin.close()
 
-            return_code = self.ffmpeg.wait()
-            error = self.ffmpeg.stderr.read().decode(
-                "utf-8", errors="replace"
-            )
-
-            if return_code != 0:
-                raise RuntimeError(
-                    f"FFmpeg/NVENC terminou com código {return_code}: "
-                    f"{error.strip()}"
+                return_code = self.ffmpeg.wait()
+                error = self.ffmpeg.stderr.read().decode(
+                    "utf-8", errors="replace"
                 )
-        elif self.writer is not None:
-            self.writer.release()
 
-        cv2.destroyAllWindows()
+                if return_code != 0:
+                    raise RuntimeError(
+                        f"FFmpeg/NVENC exited with code {return_code}: "
+                        f"{error.strip()}"
+                    )
+            elif self.writer is not None:
+                self.writer.release()
+        finally:
+            self._released = True
+            cv2.destroyAllWindows()
