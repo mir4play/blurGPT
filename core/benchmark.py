@@ -49,14 +49,25 @@ def collect_environment(device=0):
     }
 
 
+def _setting(settings, name):
+    """Read a setting from either a dict or the legacy config module."""
+    if isinstance(settings, dict):
+        return settings[name]
+    return getattr(settings, name)
+
+
 def write_benchmark(video_name, stats, video, settings, run_id, environment):
-    """Append one structured processing record to the benchmark history."""
+    """Append one structured processing record to the benchmark history.
+
+    ``settings`` may be the persistent settings dict used by BatchProcessor or
+    the legacy config module used by older callers. Supporting both keeps old
+    integrations readable while the CLI migrates to the shared engine.
+    """
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    # The benchmark must describe the effective configuration, not merely the
-    # environment captured before processing started.
+    device = _setting(settings, "device")
     environment = dict(environment or {})
-    environment.update(collect_environment(settings["device"]))
+    environment.update(collect_environment(device))
 
     record = {
         "run_id": run_id,
@@ -72,16 +83,16 @@ def write_benchmark(video_name, stats, video, settings, run_id, environment):
         "write_time_s": round(stats.tempo_write, 3),
         "encoder": video.write_backend,
         "profile": _profile_name(settings),
-        "device": settings["device"],
-        "detect_every": settings["detect_every"],
-        "imgsz": settings["imgsz"],
-        "model": settings["model_path"],
-        "video_encoder": settings["video_encoder"],
-        "video_codec": settings["video_codec"],
-        "nvenc_cq": settings["video_nvenc_cq"],
-        "nvenc_preset": settings["video_nvenc_preset"],
-        "pixel_size": settings["pixel_size"],
-        "box_margin": settings["box_margin"],
+        "device": device,
+        "detect_every": _setting(settings, "detect_every"),
+        "imgsz": _setting(settings, "imgsz"),
+        "model": _setting(settings, "model_path"),
+        "video_encoder": _setting(settings, "video_encoder"),
+        "video_codec": _setting(settings, "video_codec"),
+        "nvenc_cq": _setting(settings, "video_nvenc_cq"),
+        "nvenc_preset": _setting(settings, "video_nvenc_preset"),
+        "pixel_size": _setting(settings, "pixel_size"),
+        "box_margin": _setting(settings, "box_margin"),
         "environment": environment,
     }
 
@@ -98,5 +109,5 @@ def _profile_name(settings):
 
     try:
         return profile_name(settings)
-    except ValueError:
+    except (ValueError, TypeError):
         return "Custom"
