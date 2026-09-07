@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def application_root() -> Path:
-    """Return the writable BlurGPT root directory.
+    """Return the BlurGPT application root.
 
     During development this is the repository root. When frozen (for example
     by PyInstaller), it is the directory containing the executable. This keeps
@@ -32,3 +32,5 @@ CONFIG_DIR = ROOT_DIR / "config"
 SETTINGS_PATH = CONFIG_DIR / "settings.json"
 MODEL_DIR = ROOT_DIR / "models"
 DEFAULT_MODEL_PATH = MODEL_DIR / "blurGPT.pt"
+FFMPEG_DIR = ROOT_DIR / "ffmpeg"
+BUNDLED_FFMPEG_PATH = FFMPEG_DIR / ("ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
