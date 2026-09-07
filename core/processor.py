@@ -164,6 +164,16 @@ class BatchProcessor:
                 self.manager.cancel(job)
                 self._emit_status("Cancellation requested — stopping safely")
                 break
+            except KeyboardInterrupt:
+                # Keep Ctrl+C as a cooperative CLI cancellation rather than
+                # leaving the current job stranded in processing/.
+                self.request_cancel()
+                try:
+                    self.manager.cancel(job)
+                except Exception:
+                    pass
+                self._emit_status("Cancellation requested — stopping safely")
+                break
             except Exception as error:
                 failed += 1
                 self._emit_status(f"Failed: {job.filename}")
