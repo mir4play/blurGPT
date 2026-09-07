@@ -1,8 +1,11 @@
 import shutil
 import subprocess
 import time
+from pathlib import Path
 
 import cv2
+
+from core.paths import BUNDLED_FFMPEG_PATH
 
 
 class VideoProcessor:
@@ -26,6 +29,7 @@ class VideoProcessor:
         self.writer = None
         self.ffmpeg = None
         self.write_backend = "opencv"
+        self._released = False
 
         self.cap = cv2.VideoCapture(self.input_video)
 
@@ -74,14 +78,27 @@ class VideoProcessor:
 
         self.write_backend = f"opencv:{codec}"
 
+    def _resolve_ffmpeg(self):
+        """Prefer the portable bundled FFmpeg, then fall back to PATH."""
+        bundled = Path(BUNDLED_FFMPEG_PATH)
+        if bundled.is_file():
+            return str(bundled)
+
+        ffmpeg_path = shutil.which("ffmpeg")
+        if ffmpeg_path:
+            return ffmpeg_path
+
+        return None
+
     def _create_nvenc_writer(self):
         """Create an FFmpeg pipe using NVIDIA hardware H.264 encoding."""
-        ffmpeg_path = shutil.which("ffmpeg")
+        ffmpeg_path = self._resolve_ffmpeg()
 
         if ffmpeg_path is None:
             self.cap.release()
             raise RuntimeError(
-                "FFmpeg não encontrado. Instale o FFmpeg e coloque-o no PATH "
+                "FFmpeg não encontrado. Coloque ffmpeg.exe em 'ffmpeg/' "
+                "na pasta do BlurGPT ou instale o FFmpeg e coloque-o no PATH "
                 "ou use VIDEO_ENCODER='opencv'."
             )
 
@@ -138,7 +155,11 @@ class VideoProcessor:
             stats.tempo_write += time.perf_counter() - t0
 
     def release(self):
-        """Libera recursos e finaliza o encoder."""
+        """Libera recursos e finaliza o encoder de forma idempotente."""
+        if self._released:
+            return
+
+        self._released = True
         self.cap.release()
 
         if self.ffmpeg is not None:
