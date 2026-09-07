@@ -23,6 +23,32 @@ def _resolve_ffmpeg():
     return Path(system) if system else None
 
 
+def _validate_nvenc(errors):
+    ffmpeg = _resolve_ffmpeg()
+    if ffmpeg is None:
+        errors.append(
+            "NVENC encoding requires FFmpeg, but no FFmpeg executable was found.\n"
+            "Bundle ffmpeg/ffmpeg.exe with BlurGPT or install FFmpeg and add it to PATH."
+        )
+        return
+
+    try:
+        result = subprocess.run(
+            [str(ffmpeg), "-hide_banner", "-encoders"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if "h264_nvenc" not in result.stdout:
+            errors.append(
+                "The selected FFmpeg does not provide the h264_nvenc encoder.\n"
+                "Use an FFmpeg build with NVIDIA NVENC support or select OpenCV encoding."
+            )
+    except (OSError, subprocess.SubprocessError) as exc:
+        errors.append(f"Could not validate FFmpeg/NVENC support: {exc}")
+
+
 def validate_processing_environment(settings=None):
     """Return a list of actionable errors preventing a processing run."""
     errors = []
@@ -35,6 +61,9 @@ def validate_processing_environment(settings=None):
     model_path = _resolve_model_path(effective["model_path"])
     if not model_path.is_file():
         errors.append(f"YOLO model was not found:\n{model_path}")
+
+    if effective["video_encoder"] == "h264_nvenc":
+        _validate_nvenc(errors)
 
     device = effective["device"]
     if device == "cpu":
@@ -52,29 +81,5 @@ def validate_processing_environment(settings=None):
             f"CUDA device {device} is not available. "
             f"This system exposes {torch.cuda.device_count()} GPU device(s)."
         )
-
-    if effective["video_encoder"] == "h264_nvenc":
-        ffmpeg = _resolve_ffmpeg()
-        if ffmpeg is None:
-            errors.append(
-                "NVENC encoding requires FFmpeg, but no FFmpeg executable was found.\n"
-                "Bundle ffmpeg/ffmpeg.exe with BlurGPT or install FFmpeg and add it to PATH."
-            )
-        else:
-            try:
-                result = subprocess.run(
-                    [str(ffmpeg), "-hide_banner", "-encoders"],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                    check=False,
-                )
-                if "h264_nvenc" not in result.stdout:
-                    errors.append(
-                        "The selected FFmpeg does not provide the h264_nvenc encoder.\n"
-                        "Use an FFmpeg build with NVIDIA NVENC support or select OpenCV encoding."
-                    )
-            except (OSError, subprocess.SubprocessError) as exc:
-                errors.append(f"Could not validate FFmpeg/NVENC support: {exc}")
 
     return errors
