@@ -172,6 +172,8 @@ BlurGPT processes jobs one at a time. Videos found in `processing/` have priorit
 
 The PySide6 GUI is designed to keep heavy video processing outside the Qt event loop. Processing runs in a worker thread so the interface remains responsive during YOLO inference and video encoding.
 
+See [`docs/gui.md`](docs/gui.md) for architecture rules, profiles, and development principles. Trackable GUI work is in the [GUI development backlog](https://github.com/mir4play/blurGPT/issues/14).
+
 The GUI currently provides:
 
 - Video queue with multi-selection
@@ -288,6 +290,7 @@ BlurGPT/
 │   ├── jobmanager.py     # Job discovery, finish, and fail handling
 │   ├── motion.py         # Motion prediction
 │   ├── pixelate.py       # Anonymization
+│   ├── processor.py      # Qt-free batch engine (CLI + GUI)
 │   ├── report.py         # Processing statistics
 │   ├── settings.py       # Persistent runtime settings and profiles
 │   └── video.py          # Video I/O and encoding
@@ -299,6 +302,7 @@ BlurGPT/
 │
 ├── docs/
 │   ├── architecture.md
+│   ├── gui.md
 │   ├── performance.md
 │   └── roadmap.md
 │
@@ -326,6 +330,7 @@ BlurGPT/
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md) — runtime architecture and responsibilities of each module
+- [`docs/gui.md`](docs/gui.md) — desktop GUI guide and development principles
 - [`docs/performance.md`](docs/performance.md) — performance benchmarks and optimization decisions
 - [`docs/roadmap.md`](docs/roadmap.md) — current development priorities and future work
 - [`CHANGELOG.md`](CHANGELOG.md) — version history
@@ -355,8 +360,7 @@ BlurGPT/
 
 ### In development / planned
 
-- Clean / Advanced GUI modes with detailed live performance metrics
-- Additional GUI queue and result-state information
+- GUI queue hardening and pre-flight checks (see issue #14)
 - Model packaging improvements (Git LFS / release assets)
 - First-run diagnostics and packaged Windows distribution
 - Additional anonymization methods
