@@ -76,6 +76,16 @@ class JobManager:
                 return candidate
             counter += 1
 
+    def get_unique_input_path(self, filename):
+        """Return a safe input path for a newly imported video.
+
+        This is intentionally based on the destination filename, not the
+        original source path. Two different folders may contain files with
+        the same basename, so imports are renamed instead of being skipped or
+        overwriting an existing queued job.
+        """
+        return self._unique_path(self.input_dir, filename)
+
     def get_processing_path(self, job):
         return self._path(self.processing_dir, job)
 
