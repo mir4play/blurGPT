@@ -3,6 +3,7 @@
 from PySide6.QtCore import QObject, Signal, Slot
 
 from core.jobmanager import JobManager
+from core.preflight import validate_processing_environment
 from core.processor import BatchProcessor
 
 
@@ -23,6 +24,15 @@ class ProcessingWorker(QObject):
     @Slot()
     def run(self):
         try:
+            self.status.emit("Checking processing environment…")
+            errors = validate_processing_environment()
+            if errors:
+                self.failed.emit(
+                    "BlurGPT cannot start processing yet.\n\n"
+                    + "\n\n".join(f"• {error}" for error in errors)
+                )
+                return
+
             manager = JobManager()
             self.processor = BatchProcessor(
                 manager,
