@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):
         # snapshot, but only repaint the detailed progress label at a calm,
         # human-readable rate.
         self._metrics_refresh = QTimer(self)
-        self._metrics_refresh.setInterval(500)
+        self._metrics_refresh.setInterval(167)
         self._metrics_refresh.timeout.connect(self._refresh_progress_metrics)
 
         self.refresh_jobs()
@@ -140,7 +140,7 @@ class MainWindow(QMainWindow):
         action_buttons = QHBoxLayout()
         self.start_button = QPushButton("Start processing")
         self.start_button.setObjectName("primaryButton")
-        self.start_button.clicked.connect(self.start_processing)
+        self.start_button.clicked.connect(self._on_start_button_clicked)
         self.settings_button = QPushButton("Settings…")
         self.settings_button.clicked.connect(self.open_settings)
         action_buttons.addWidget(self.start_button)
@@ -308,6 +308,12 @@ class MainWindow(QMainWindow):
         self.mode_button.setText("Clean" if checked else "Advanced")
         self.metrics_card.setVisible(checked)
         self.adjustSize()
+
+    def _on_start_button_clicked(self):
+        if self.thread is not None and self.thread.isRunning():
+            self.cancel_processing()
+        else:
+            self.start_processing()
 
     def start_processing(self):
         if self.thread is not None and self.thread.isRunning():
