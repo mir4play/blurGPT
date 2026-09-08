@@ -40,6 +40,7 @@ class MainWindow(QMainWindow):
         self._processing_started_at = None
         self._last_progress = 0
         self._advanced_mode = False
+        self._latest_metrics = None
 
         self.setWindowTitle("BlurGPT")
         self.setMinimumSize(900, 620)
@@ -48,6 +49,14 @@ class MainWindow(QMainWindow):
         self._heartbeat = QTimer(self)
         self._heartbeat.setInterval(1000)
         self._heartbeat.timeout.connect(self._update_heartbeat)
+
+        # Processing can emit metrics several times per second. Keep the latest
+        # snapshot, but only repaint the detailed progress label at a calm,
+        # human-readable rate.
+        self._metrics_refresh = QTimer(self)
+        self._metrics_refresh.setInterval(500)
+        self._metrics_refresh.timeout.connect(self._refresh_progress_metrics)
+
         self.refresh_jobs()
 
     def _build_ui(self):
@@ -132,13 +141,9 @@ class MainWindow(QMainWindow):
         self.start_button = QPushButton("Start processing")
         self.start_button.setObjectName("primaryButton")
         self.start_button.clicked.connect(self.start_processing)
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setEnabled(False)
-        self.cancel_button.clicked.connect(self.cancel_processing)
         self.settings_button = QPushButton("Settings…")
         self.settings_button.clicked.connect(self.open_settings)
         action_buttons.addWidget(self.start_button)
-        action_buttons.addWidget(self.cancel_button)
         action_buttons.addWidget(self.settings_button)
         status_layout.addLayout(action_buttons)
 
@@ -176,6 +181,10 @@ class MainWindow(QMainWindow):
             QPushButton:hover { background: #4a4d51; }
             QPushButton:disabled { color: #777; }
             QPushButton#primaryButton { background: #8ab4f8; color: #202124; font-weight: 700; padding: 11px; }
+            QPushButton#primaryButton:hover { background: #a8c7fa; }
+            QPushButton#stopButton { background: #d93025; color: white; font-weight: 700; padding: 11px; }
+            QPushButton#stopButton:hover { background: #ea4335; }
+            QPushButton#stopButton:disabled { background: #8a2923; color: #d9a7a3; }
             QProgressBar { background: #202124; border: 1px solid #3c4043; border-radius: 5px; min-height: 18px; }
             QProgressBar::chunk { background: #5f6368; border-radius: 4px; }
             """
@@ -318,24 +327,26 @@ class MainWindow(QMainWindow):
         self._set_processing_state(True)
         self.progress.setValue(0)
         self.progress_metrics.setText("0%")
+        self._latest_metrics = None
         self._last_progress = 0
         self._processing_started_at = time.monotonic()
         self.heartbeat_label.setText("Worker starting…")
         self.status_label.setText("Starting…")
         self._heartbeat.start()
+        self._metrics_refresh.start()
         self.thread.start()
 
     def cancel_processing(self):
         if self.worker is None:
             return
-        self.cancel_button.setEnabled(False)
+        self.start_button.setEnabled(False)
+        self.start_button.setText("Stopping…")
         self.status_label.setText("Cancellation requested…")
         self.worker.cancel()
 
     def _on_progress(self, value):
         self._last_progress = value
         self.progress.setValue(value)
-        self.progress_metrics.setText(f"{value}%")
 
     def _on_status(self, message):
         self.status_label.setText(message)
@@ -343,6 +354,15 @@ class MainWindow(QMainWindow):
             self.current_label.setText(message.split(": ", 1)[1])
 
     def _on_metrics(self, metrics):
+        # Do not repaint the label for every worker emission. Store the latest
+        # snapshot and let the GUI timer refresh it at a readable cadence.
+        self._latest_metrics = metrics
+
+    def _refresh_progress_metrics(self):
+        metrics = self._latest_metrics
+        if not metrics:
+            return
+
         percent = metrics.get("percent", 0.0)
         frames = metrics.get("frames", 0)
         total = metrics.get("total_frames", 0)
@@ -386,6 +406,7 @@ class MainWindow(QMainWindow):
 
     def _on_finished(self, result):
         self._heartbeat.stop()
+        self._metrics_refresh.stop()
         self._processing_started_at = None
         if result.get("cancelled"):
             self.status_label.setText("Cancelled safely")
@@ -399,6 +420,7 @@ class MainWindow(QMainWindow):
 
     def _on_failed(self, message):
         self._heartbeat.stop()
+        self._metrics_refresh.stop()
         self._processing_started_at = None
         self.heartbeat_label.setText("Worker stopped")
         self._set_processing_state(False)
@@ -418,8 +440,21 @@ class MainWindow(QMainWindow):
         self.remove_button.setEnabled(not running)
         self.refresh_button.setEnabled(not running)
         self.settings_button.setEnabled(not running)
-        self.start_button.setEnabled(not running and bool(self.manager.find_jobs()))
-        self.cancel_button.setEnabled(running)
+
+        if running:
+            self.start_button.setObjectName("stopButton")
+            self.start_button.setText("Stop processing")
+            self.start_button.setToolTip("Safely stop the current processing job")
+        else:
+            self.start_button.setObjectName("primaryButton")
+            self.start_button.setText("Start processing")
+            self.start_button.setToolTip("")
+            self.start_button.setEnabled(bool(self.manager.find_jobs()))
+
+        # Object-name based QSS is cached by Qt; repolish so the button changes
+        # immediately when switching between Start and Stop states.
+        self.start_button.style().unpolish(self.start_button)
+        self.start_button.style().polish(self.start_button)
 
     def closeEvent(self, event):
         if self.thread is None or not self.thread.isRunning():
