@@ -9,6 +9,7 @@
 # ==========================
 
 from core.paths import LOGS_DIR
+from core.preflight import validate_processing_environment
 from core.processor import BatchProcessor
 
 
@@ -21,6 +22,13 @@ def main():
     print("Using persistent BlurGPT settings from config/settings.json.")
     print("The CLI and GUI share the same BatchProcessor and processing configuration.")
     print()
+
+    preflight_errors = validate_processing_environment()
+    if preflight_errors:
+        print("Pre-flight validation failed:")
+        for error in preflight_errors:
+            print(f"- {error}")
+        raise SystemExit(1)
 
     from core.jobmanager import JobManager
 
