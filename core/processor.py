@@ -108,7 +108,12 @@ class BatchProcessor:
                     stats=stats,
                     margin=self.settings["box_margin"],
                 )
-                video.write(frame, stats)
+                try:
+                    video.write(frame, stats)
+                except RuntimeError:
+                    if self._is_cancelled():
+                        raise ProcessingCancelled
+                    raise
                 stats.frame_processed()
 
                 if video.total_frames:
@@ -121,7 +126,7 @@ class BatchProcessor:
                 if stats.frames == 1 or stats.frames % 10 == 0:
                     self._emit_metrics(stats, video)
         finally:
-            video.release()
+            video.release(ignore_encoder_error=self._is_cancelled())
 
         self.manager.finish(job)
         print_report(stats, video)
