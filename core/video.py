@@ -154,7 +154,7 @@ class VideoProcessor:
         if stats is not None:
             stats.tempo_write += time.perf_counter() - t0
 
-    def release(self):
+    def release(self, ignore_encoder_error=False):
         """Release resources and finalize the encoder exactly once."""
         if self._released:
             return
@@ -171,7 +171,7 @@ class VideoProcessor:
                     "utf-8", errors="replace"
                 )
 
-                if return_code != 0:
+                if return_code != 0 and not ignore_encoder_error:
                     raise RuntimeError(
                         f"FFmpeg/NVENC exited with code {return_code}: "
                         f"{error.strip()}"
