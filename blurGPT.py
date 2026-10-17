@@ -10,7 +10,6 @@
 
 from core.paths import LOGS_DIR
 from core.preflight import validate_processing_environment
-from core.processor import BatchProcessor
 
 
 def _print_status(message):
@@ -30,7 +29,9 @@ def main():
             print(f"- {error}")
         raise SystemExit(1)
 
+    # Import only after preflight so ultralytics/YOLO is not loaded on a hard fail.
     from core.jobmanager import JobManager
+    from core.processor import BatchProcessor
 
     manager = JobManager()
     processor = BatchProcessor(manager, status_callback=_print_status)
