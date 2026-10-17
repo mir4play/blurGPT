@@ -31,6 +31,8 @@ from gui.worker import ProcessingWorker
 class MainWindow(QMainWindow):
     """Primary BlurGPT window."""
 
+    VIDEO_SUFFIXES = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".wmv"}
+
     def __init__(self):
         super().__init__()
         self.manager = JobManager()
@@ -44,6 +46,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("BlurGPT")
         self.setMinimumSize(900, 620)
+        self.setAcceptDrops(True)
         self._build_ui()
 
         self._heartbeat = QTimer(self)
@@ -218,42 +221,66 @@ class MainWindow(QMainWindow):
         self.start_button.setEnabled(count > 0)
         self.remove_button.setEnabled(count > 0)
 
-    def add_videos(self):
-        files, _ = QFileDialog.getOpenFileNames(
-            self, "Select videos", str(ROOT_DIR),
-            "Videos (*.mp4 *.mov *.avi *.mkv *.m4v *.wmv)",
-        )
+    def _add_video_files(self, files):
         if not files:
             return
         copied = 0
         renamed = 0
-        skipped = 0
-        input_root = self.manager.input_dir.resolve()
         for filename in files:
-            source = Path(filename).resolve()
-            # Do not duplicate a file that is already inside input/.
-            try:
-                source.relative_to(input_root)
-                skipped += 1
+            source = Path(filename)
+            if not source.is_file() or source.suffix.lower() not in self.VIDEO_SUFFIXES:
                 continue
-            except ValueError:
-                pass
             destination = self.manager.get_unique_input_path(source.name)
             if destination.name != source.name:
                 renamed += 1
-            try:
-                shutil.copy2(source, destination)
-                copied += 1
-            except OSError as error:
-                QMessageBox.warning(self, "Could not add video", f"{source.name}\n\n{error}")
+            shutil.copy2(source, destination)
+            copied += 1
         self.refresh_jobs()
-        if copied or skipped:
-            message = f"Added {copied} video{'s' if copied != 1 else ''}"
-            if skipped:
-                message += f" — {skipped} already in queue (skipped)"
+        if copied:
+            message = f"Added {copied} video{'s' if copied != 1 else ''} to the queue"
             if renamed:
                 message += f" — {renamed} renamed to avoid filename collision"
             self.status_label.setText(message)
+        else:
+            self.status_label.setText("No supported video files were added")
+
+    def add_videos(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select videos",
+            str(ROOT_DIR),
+            "Videos (*.mp4 *.mov *.avi *.mkv *.m4v *.wmv)",
+        )
+        self._add_video_files(files)
+
+    def _has_supported_drop(self, event):
+        if not event.mimeData().hasUrls():
+            return False
+        return any(
+            url.isLocalFile()
+            and Path(url.toLocalFile()).suffix.lower() in self.VIDEO_SUFFIXES
+            for url in event.mimeData().urls()
+        )
+
+    def dragEnterEvent(self, event):
+        if self._has_supported_drop(event):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        files = [
+            url.toLocalFile()
+            for url in event.mimeData().urls()
+            if url.isLocalFile()
+            and Path(url.toLocalFile()).is_file()
+            and Path(url.toLocalFile()).suffix.lower() in self.VIDEO_SUFFIXES
+        ]
+        if not files:
+            event.ignore()
+            return
+        self._add_video_files(files)
+        event.acceptProposedAction()
 
     def remove_selected_videos(self):
         selected = self.queue_list.selectedItems()
