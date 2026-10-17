@@ -4,7 +4,8 @@ import shutil
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QThread, QTimer, Qt
+from PySide6.QtCore import QThread, QTimer, Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -421,17 +422,61 @@ class MainWindow(QMainWindow):
             f"Worker active • elapsed {minutes:02d}:{seconds:02d} • last frame progress {self._last_progress}%"
         )
 
+    def _open_folder(self, path: Path):
+        if path.exists():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+
     def _on_finished(self, result):
         self._heartbeat.stop()
         self._metrics_refresh.stop()
         self._processing_started_at = None
-        if result.get("cancelled"):
-            self.status_label.setText("Cancelled safely")
+        cancelled = result.get("cancelled", False)
+        succeeded = result.get("succeeded", 0)
+        failed = result.get("failed", 0)
+
+        if cancelled:
+            self.status_label.setText("Cancelled — current job returned to queue when possible")
+            title = "Processing cancelled"
+            summary = (
+                "Processing was cancelled.\n\n"
+                "The current job (if any) was returned to the input queue so it can be resumed.\n"
+                "Partial temporary output was cleaned up."
+            )
         else:
-            self.status_label.setText(f"Finished — {result['succeeded']} succeeded, {result['failed']} failed")
+            self.status_label.setText(
+                f"Finished — {succeeded} succeeded, {failed} failed"
+            )
+            title = "Processing finished"
+            summary = f"{succeeded} succeeded, {failed} failed."
+
         self.heartbeat_label.setText("Idle")
         self._set_processing_state(False)
         self.refresh_jobs()
+
+        # Show a short summary with optional folder shortcuts.
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(summary)
+        msg.setIcon(QMessageBox.Information)
+
+        open_output = msg.addButton("Open output/", QMessageBox.ActionRole)
+        open_error = msg.addButton("Open input_error/", QMessageBox.ActionRole)
+        open_logs = msg.addButton("Open logs/", QMessageBox.ActionRole)
+        msg.addButton(QMessageBox.Close)
+
+        # Only enable error button if there were failures.
+        open_error.setEnabled(failed > 0)
+
+        msg.exec()
+
+        clicked = msg.clickedButton()
+        if clicked == open_output:
+            self._open_folder(self.manager.output_dir)
+        elif clicked == open_error:
+            self._open_folder(self.manager.error_dir)
+        elif clicked == open_logs:
+            self._open_folder(ROOT_DIR / "logs")
+
         if self._closing_after_processing:
             self.close()
 
