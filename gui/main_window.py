@@ -98,7 +98,8 @@ class MainWindow(QMainWindow):
         self.add_button.clicked.connect(self.add_videos)
         self.remove_button = QPushButton("Remove selected")
         self.remove_button.setToolTip(
-            "Remove selected queued videos. Original source files are not deleted."
+            "Move selected queued videos out of the queue to input_removed/. "
+            "Files are not permanently deleted."
         )
         self.remove_button.clicked.connect(self.remove_selected_videos)
         self.refresh_button = QPushButton("Refresh")
@@ -226,8 +227,17 @@ class MainWindow(QMainWindow):
             return
         copied = 0
         renamed = 0
+        skipped = 0
+        input_root = self.manager.input_dir.resolve()
         for filename in files:
-            source = Path(filename)
+            source = Path(filename).resolve()
+            # Do not duplicate a file that is already inside input/.
+            try:
+                source.relative_to(input_root)
+                skipped += 1
+                continue
+            except ValueError:
+                pass
             destination = self.manager.get_unique_input_path(source.name)
             if destination.name != source.name:
                 renamed += 1
@@ -237,8 +247,10 @@ class MainWindow(QMainWindow):
             except OSError as error:
                 QMessageBox.warning(self, "Could not add video", f"{source.name}\n\n{error}")
         self.refresh_jobs()
-        if copied:
+        if copied or skipped:
             message = f"Added {copied} video{'s' if copied != 1 else ''}"
+            if skipped:
+                message += f" — {skipped} already in queue (skipped)"
             if renamed:
                 message += f" — {renamed} renamed to avoid filename collision"
             self.status_label.setText(message)
@@ -278,23 +290,22 @@ class MainWindow(QMainWindow):
         count = len(filenames)
         answer = QMessageBox.question(
             self, "Remove from queue",
-            f"Remove {count} selected video{'s' if count != 1 else ''} from the BlurGPT queue?\n\n"
-            "The original source files will not be deleted.",
+            f"Move {count} selected video{'s' if count != 1 else ''} out of the BlurGPT queue?\n\n"
+            "They will be moved to the input_removed/ folder and can be recovered from there. "
+            "Nothing is permanently deleted.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
         if answer != QMessageBox.Yes:
             return
         removed = 0
         for filename in filenames:
-            path = self.manager.input_dir / filename
             try:
-                if path.is_file():
-                    path.unlink()
+                if self.manager.remove_from_queue(filename):
                     removed += 1
             except OSError as error:
                 QMessageBox.warning(self, "Could not remove video", f"{filename}\n\n{error}")
         self.refresh_jobs()
-        self.status_label.setText(f"Removed {removed} video{'s' if removed != 1 else ''} from queue")
+        self.status_label.setText(f"Moved {removed} video{'s' if removed != 1 else ''} to input_removed/")
 
     def open_settings(self):
         if self.thread is not None and self.thread.isRunning():
