@@ -9,7 +9,7 @@
 # ==========================
 
 from core.paths import LOGS_DIR
-from core.processor import BatchProcessor
+from core.preflight import validate_processing_environment
 
 
 def _print_status(message):
@@ -22,7 +22,16 @@ def main():
     print("The CLI and GUI share the same BatchProcessor and processing configuration.")
     print()
 
+    preflight_errors = validate_processing_environment()
+    if preflight_errors:
+        print("Pre-flight validation failed:")
+        for error in preflight_errors:
+            print(f"- {error}")
+        raise SystemExit(1)
+
+    # Import only after preflight so ultralytics/YOLO is not loaded on a hard fail.
     from core.jobmanager import JobManager
+    from core.processor import BatchProcessor
 
     manager = JobManager()
     processor = BatchProcessor(manager, status_callback=_print_status)
