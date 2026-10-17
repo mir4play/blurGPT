@@ -125,8 +125,19 @@ class BatchProcessor:
                 # avoid turning Qt signal delivery into part of the hot path.
                 if stats.frames == 1 or stats.frames % 10 == 0:
                     self._emit_metrics(stats, video)
+        except KeyboardInterrupt:
+            # Ctrl+C must count as cancel before encoder shutdown, otherwise a
+            # non-zero FFmpeg exit replaces KeyboardInterrupt and fail() sends
+            # the job to input_error/.
+            self.request_cancel()
+            raise
         finally:
-            video.release(ignore_encoder_error=self._is_cancelled())
+            ignore_encoder_error = self._is_cancelled()
+            try:
+                video.release(ignore_encoder_error=ignore_encoder_error)
+            except Exception:
+                if not ignore_encoder_error:
+                    raise
 
         self.manager.finish(job)
         print_report(stats, video)
