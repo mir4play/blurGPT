@@ -14,6 +14,7 @@ from core.paths import (
     LOGS_DIR,
     OUTPUT_DIR,
     PROCESSING_DIR,
+    REMOVED_DIR,
     TEMP_DIR,
 )
 
@@ -42,11 +43,13 @@ class JobManager:
         self.output_dir = OUTPUT_DIR
         self.archive_dir = ARCHIVE_DIR
         self.error_dir = ERROR_DIR
+        self.removed_dir = REMOVED_DIR
         self.logs_dir = LOGS_DIR
 
         for folder in (
             self.input_dir, self.processing_dir, self.temp_dir,
-            self.output_dir, self.archive_dir, self.error_dir, self.logs_dir,
+            self.output_dir, self.archive_dir, self.error_dir,
+            self.removed_dir, self.logs_dir,
         ):
             folder.mkdir(parents=True, exist_ok=True)
 
@@ -162,3 +165,15 @@ class JobManager:
                 f.write(message)
         except OSError:
             pass
+
+    def remove_from_queue(self, filename):
+        """Move a queued input file to input_removed/ so it is not destroyed.
+
+        Returns True if the file was moved, False if it did not exist.
+        """
+        source = self.input_dir / filename
+        if not source.is_file():
+            return False
+        destination = self._unique_path(self.removed_dir, filename)
+        source.replace(destination)
+        return True
