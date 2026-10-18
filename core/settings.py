@@ -22,6 +22,7 @@ DEFAULTS: dict[str, Any] = {
     "video_codec": config.VIDEO_CODEC,
     "video_nvenc_cq": config.VIDEO_NVENC_CQ,
     "video_nvenc_preset": config.VIDEO_NVENC_PRESET,
+    "gui_advanced_mode": False,
 }
 
 PROFILES: dict[str, dict[str, Any]] = {
@@ -136,6 +137,8 @@ def validate_settings(values: dict[str, Any]) -> dict[str, Any]:
     if preset not in {f"p{i}" for i in range(1, 8)}:
         raise ValueError("NVENC preset must be between p1 and p7")
     settings["video_nvenc_preset"] = preset
+
+    settings["gui_advanced_mode"] = bool(settings.get("gui_advanced_mode", False))
 
     return settings
 
