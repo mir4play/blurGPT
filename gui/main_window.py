@@ -5,7 +5,8 @@ import time
 from pathlib import Path
 
 import config
-from PySide6.QtCore import QThread, QTimer, Qt
+from PySide6.QtCore import QThread, QTimer, Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -24,7 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.jobmanager import JobManager
-from core.paths import ROOT_DIR
+from core.paths import ROOT_DIR, OUTPUT_DIR, ERROR_DIR, LOGS_DIR
 from gui.settings_dialog import SettingsDialog
 from gui.worker import ProcessingWorker
 
@@ -422,6 +423,59 @@ class MainWindow(QMainWindow):
             f"Worker active • elapsed {minutes:02d}:{seconds:02d} • last frame progress {self._last_progress}%"
         )
 
+    def _show_summary_dialog(self, result):
+        """Show a short completion summary with optional folder shortcuts."""
+        succeeded = int(result.get("succeeded", 0))
+        failed = int(result.get("failed", 0))
+        cancelled = bool(result.get("cancelled"))
+
+        if cancelled:
+            title = "Processing cancelled"
+            body = (
+                f"Cancelled safely.\n\n"
+                f"Succeeded: {succeeded}\n"
+                f"Failed: {failed}\n\n"
+                "The current job was returned to the input queue when possible. "
+                "Partial temporary output was cleaned up."
+            )
+        else:
+            title = "Processing finished"
+            body = (
+                f"Finished.\n\n"
+                f"Succeeded: {succeeded}\n"
+                f"Failed: {failed}"
+            )
+
+        box = QMessageBox(self)
+        box.setWindowTitle(title)
+        box.setText(body)
+        box.setIcon(QMessageBox.Information if not failed else QMessageBox.Warning)
+
+        open_output = box.addButton("Open output/", QMessageBox.ActionRole)
+        open_errors = None
+        if failed:
+            open_errors = box.addButton("Open input_error/", QMessageBox.ActionRole)
+        open_logs = box.addButton("Open logs/", QMessageBox.ActionRole)
+        box.addButton(QMessageBox.Close)
+
+        box.exec()
+
+        clicked = box.clickedButton()
+        if clicked == open_output:
+            self._open_folder(OUTPUT_DIR)
+        elif open_errors is not None and clicked == open_errors:
+            self._open_folder(ERROR_DIR)
+        elif clicked == open_logs:
+            self._open_folder(LOGS_DIR)
+
+    def _open_folder(self, path):
+        """Open a folder in the system file manager. Creates it if missing."""
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve())))
+
     def _on_finished(self, result):
         self._heartbeat.stop()
         self._metrics_refresh.stop()
@@ -433,6 +487,7 @@ class MainWindow(QMainWindow):
         self.heartbeat_label.setText("Idle")
         self._set_processing_state(False)
         self.refresh_jobs()
+        self._show_summary_dialog(result)
         if self._closing_after_processing:
             self.close()
 
