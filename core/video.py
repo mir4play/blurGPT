@@ -154,8 +154,13 @@ class VideoProcessor:
         if stats is not None:
             stats.tempo_write += time.perf_counter() - t0
 
-    def release(self):
-        """Release resources and finalize the encoder exactly once."""
+    def release(self, ignore_encoder_error=False):
+        """Release resources and finalize the encoder exactly once.
+
+        Cooperative cancel closes the pipe early. FFmpeg then often exits
+        non-zero, and stdin.close() itself raises BrokenPipeError. Those
+        shutdown errors must not replace ProcessingCancelled.
+        """
         if self._released:
             return
 
@@ -163,19 +168,30 @@ class VideoProcessor:
 
         try:
             if self.ffmpeg is not None:
+                close_error = None
                 if self.ffmpeg.stdin is not None:
-                    self.ffmpeg.stdin.close()
+                    try:
+                        self.ffmpeg.stdin.close()
+                    except (BrokenPipeError, OSError) as exc:
+                        close_error = exc
 
+                # Always reap the process so the temp file is not left locked.
                 return_code = self.ffmpeg.wait()
-                error = self.ffmpeg.stderr.read().decode(
-                    "utf-8", errors="replace"
-                )
+                error = ""
+                if self.ffmpeg.stderr is not None:
+                    error = self.ffmpeg.stderr.read().decode(
+                        "utf-8", errors="replace"
+                    )
 
-                if return_code != 0:
+                if ignore_encoder_error:
+                    return
+
+                if close_error is not None or return_code != 0:
+                    detail = error.strip() or str(close_error or "")
                     raise RuntimeError(
                         f"FFmpeg/NVENC exited with code {return_code}: "
-                        f"{error.strip()}"
-                    )
+                        f"{detail}"
+                    ) from close_error
             elif self.writer is not None:
                 self.writer.release()
         finally:
