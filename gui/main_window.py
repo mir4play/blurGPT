@@ -4,6 +4,7 @@ import shutil
 import time
 from pathlib import Path
 
+import config
 from PySide6.QtCore import QThread, QTimer, Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -42,7 +43,7 @@ class MainWindow(QMainWindow):
         self._advanced_mode = False
         self._latest_metrics = None
 
-        self.setWindowTitle("BlurGPT")
+        self.setWindowTitle(f"{config.APP_NAME} {config.VERSION}")
         self.setMinimumSize(900, 620)
         self._build_ui()
 
@@ -67,7 +68,7 @@ class MainWindow(QMainWindow):
 
         header = QHBoxLayout()
         title_box = QVBoxLayout()
-        title = QLabel("BlurGPT")
+        title = QLabel(f"{config.APP_NAME} {config.VERSION}")
         title.setObjectName("title")
         subtitle = QLabel("Video anonymization — faces and license plates")
         subtitle.setObjectName("subtitle")
