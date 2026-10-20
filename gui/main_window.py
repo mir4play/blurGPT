@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from core.jobmanager import JobManager
 from core.paths import ROOT_DIR
+from core.settings import load_settings, save_settings
 from gui.settings_dialog import SettingsDialog
 from gui.worker import ProcessingWorker
 
@@ -49,6 +50,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(900, 620)
         self.setAcceptDrops(True)
         self._build_ui()
+        self._load_advanced_preference()
 
         self._heartbeat = QTimer(self)
         self._heartbeat.setInterval(1000)
@@ -356,11 +358,28 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             self.status_label.setText("Settings saved — ready for the next run")
 
+    def _load_advanced_preference(self):
+        """Restore the last Clean/Advanced choice from settings.json."""
+        try:
+            settings = load_settings()
+            advanced = bool(settings.get("gui_advanced_mode", False))
+        except Exception:
+            advanced = False
+        self.mode_button.setChecked(advanced)
+        self._toggle_advanced(advanced)
+
     def _toggle_advanced(self, checked):
         self._advanced_mode = bool(checked)
         self.mode_button.setText("Clean" if checked else "Advanced")
         self.metrics_card.setVisible(checked)
         self.adjustSize()
+        # Persist immediately so the next launch remembers the choice.
+        try:
+            settings = load_settings()
+            settings["gui_advanced_mode"] = self._advanced_mode
+            save_settings(settings)
+        except Exception:
+            pass
 
     def _on_start_button_clicked(self):
         if self.thread is not None and self.thread.isRunning():

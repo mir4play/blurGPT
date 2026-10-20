@@ -188,5 +188,6 @@ class SettingsDialog(QDialog):
             "video_codec": "mp4v",
             "video_nvenc_cq": self.cq.value(),
             "video_nvenc_preset": self.preset.currentData(),
+            "gui_advanced_mode": current_settings.get("gui_advanced_mode", False),
         })
         self.accept()
