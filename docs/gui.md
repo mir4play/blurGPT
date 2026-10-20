@@ -18,7 +18,9 @@ CLI remains available:
 python blurGPT.py
 ```
 
-Both should eventually share the same engine (`core/processor.py`). The GUI must never run YOLO or encoding on the Qt UI thread.
+Both share the same Qt-free engine (`core/processor.py` / `BatchProcessor`). The GUI never runs YOLO or encoding on the Qt UI thread.
+
+Portable / frozen Windows builds use `core/paths.py` (`application_root()` detects `sys.frozen` and places data next to the executable).
 
 ---
 
@@ -33,7 +35,7 @@ gui.py
                     ├── JobManager
                     ├── Detector / MotionPredictor
                     ├── VideoProcessor
-                    └── settings / benchmarks
+                    └── settings / benchmarks / preflight
 ```
 
 **Rules:**
@@ -41,8 +43,8 @@ gui.py
 1. **Qt-free engine** — `core/processor.py` has no PySide imports.
 2. **Worker thread** — long work only inside `ProcessingWorker` / `BatchProcessor`.
 3. **Settings outside source** — runtime prefs in `config/settings.json` (gitignored); `config.py` holds defaults only.
-4. **Cooperative cancel** — never kill the process mid-encode; use `request_cancel` and `JobManager.cancel`.
-5. **Simple by default** — Clean mode first; Advanced metrics optional.
+4. **Cooperative cancel** — never kill the process mid-encode; use `request_cancel` and `JobManager.cancel`. NVENC/FFmpeg shutdown is hardened so cancellation is not turned into a failure.
+5. **Simple by default** — Clean mode first; Advanced metrics optional (preference can be persisted).
 
 ---
 
@@ -50,14 +52,17 @@ gui.py
 
 | Action | Behavior |
 |---|---|
-| Add videos | Copy into `input/` (do not move the user's original) |
-| Remove from queue | Remove BlurGPT's copy under `input/` only when safe; originals outside the project are untouched |
-| Start | Process `processing/` first, then `input/`, one job at a time |
-| Cancel | Stop after the current cooperative check; return the current file to a resumable state when possible |
+| Add videos | Copy into `input/` (skip if already under `input/`; do not move the user's original) |
+| Remove from queue | Move BlurGPT's copy from `input/` to `input_removed/` (non-destructive). Originals outside the project are untouched. |
+| Start | Preflight (model, CUDA/NVENC, settings) then process `processing/` first, then `input/`, one job at a time |
+| Cancel | Stop after the current cooperative check; return the current file to a resumable state when possible. NVENC pipe errors do not mask cancellation. |
 | Fail | Move job to `input_error/`, log to `logs/errors.log`, continue batch |
 | Success | Output in `output/`, original in `input_archive/` |
+| Finish / Cancel summary | (pending polish) dialog with counts + shortcuts to `output/`, `input_error/` (if failures), `logs/` |
 
 Settings changed in the dialog apply to the **next** processing run, not a job already in flight.
+
+Drag-and-drop import, version in window title, and persist Clean/Advanced are implemented on open PRs and awaiting merge after local smoke-test.
 
 ---
 
@@ -81,13 +86,14 @@ Keep the GUI **simple and functional**:
 - Prefer clear dialogs (missing model, missing FFmpeg, invalid settings) over silent fallback.
 - Avoid full trackers, parallel GPU jobs, and heavy UI frameworks unless measured need appears.
 
-Suggested order of work (details in Issues):
+Current polish status (see open PRs against `feature/pyside6-gui`):
 
-1. Queue correctness (processing items, name collisions)
-2. Pre-flight checks before Start
-3. Clear finish / fail / cancel messaging and folder shortcuts
-4. Small UX polish (drag-and-drop, persist Advanced, version in title)
-5. CLI → `BatchProcessor` unification if still divergent
+- #34 — finish/cancel summary + folder shortcuts (#17)
+- #33 — drag-and-drop import (#18)
+- #28 — version in window title (#18)
+- #36 — persist Clean/Advanced mode (#18)
+
+All are mergeable; local Windows GUI smoke-test recommended before merging.
 
 ---
 
