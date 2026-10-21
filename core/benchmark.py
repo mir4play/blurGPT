@@ -1,12 +1,11 @@
 import json
 import platform
-import shutil
 import subprocess
 from datetime import datetime, timezone
 
 import torch
 
-from core.paths import BUNDLED_FFMPEG_PATH, LOGS_DIR
+from core.paths import LOGS_DIR, resolve_ffmpeg
 
 
 LOG_PATH = LOGS_DIR / "benchmarks.jsonl"
@@ -14,13 +13,12 @@ LOG_PATH = LOGS_DIR / "benchmarks.jsonl"
 
 def _ffmpeg_version():
     """Return the version of the same FFmpeg resolution used by VideoProcessor."""
-    bundled = BUNDLED_FFMPEG_PATH
-    ffmpeg = str(bundled) if bundled.is_file() else shutil.which("ffmpeg")
-    if not ffmpeg:
+    ffmpeg_path = resolve_ffmpeg()
+    if not ffmpeg_path:
         return "not available"
     try:
         result = subprocess.run(
-            [ffmpeg, "-version"],
+            [str(ffmpeg_path), "-version"],
             capture_output=True,
             text=True,
             timeout=5,

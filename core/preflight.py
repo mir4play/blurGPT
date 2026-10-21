@@ -1,12 +1,11 @@
 """Pre-flight validation for a BlurGPT processing run."""
 
 from pathlib import Path
-import shutil
 import subprocess
 
 import torch
 
-from core.paths import BUNDLED_FFMPEG_PATH, ROOT_DIR
+from core.paths import ROOT_DIR, resolve_ffmpeg
 from core.settings import load_settings, validate_settings
 
 
@@ -15,16 +14,8 @@ def _resolve_model_path(model_path):
     return path if path.is_absolute() else ROOT_DIR / path
 
 
-def _resolve_ffmpeg():
-    bundled = Path(BUNDLED_FFMPEG_PATH)
-    if bundled.is_file():
-        return bundled
-    system = shutil.which("ffmpeg")
-    return Path(system) if system else None
-
-
 def _validate_nvenc(errors):
-    ffmpeg = _resolve_ffmpeg()
+    ffmpeg = resolve_ffmpeg()
     if ffmpeg is None:
         errors.append(
             "NVENC encoding requires FFmpeg, but no FFmpeg executable was found.\n"
