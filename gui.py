@@ -1,6 +1,15 @@
 """BlurGPT graphical application entry point."""
 
-from gui.main_window import run
+from PySide6.QtWidgets import QApplication
+
+from gui.main_window import MainWindow
+
+
+def run():
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    return app.exec()
 
 
 if __name__ == "__main__":
