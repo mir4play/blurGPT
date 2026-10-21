@@ -14,6 +14,7 @@ def make_manager(tmp_path, monkeypatch):
         "ERROR_DIR": tmp_path / "input_error",
         "REMOVED_DIR": tmp_path / "input_removed",
         "LOGS_DIR": tmp_path / "logs",
+        "CONFIG_DIR": tmp_path / "config",
     }
     for name, path in folders.items():
         monkeypatch.setattr(jobmanager_module, name, path)
@@ -83,9 +84,7 @@ def test_fail_moves_input_to_error_removes_temp_and_logs(
     assert "RuntimeError: encoder failed" in log
 
 
-def test_remove_from_queue_moves_file_without_deleting_it(
-    tmp_path, monkeypatch
-):
+def test_remove_from_queue_moves_sole_copy(tmp_path, monkeypatch):
     manager, folders = make_manager(tmp_path, monkeypatch)
     source = folders["INPUT_DIR"] / "trip.mp4"
     source.write_bytes(b"original")
@@ -94,3 +93,40 @@ def test_remove_from_queue_moves_file_without_deleting_it(
     assert not source.exists()
     assert (folders["REMOVED_DIR"] / "trip.mp4").read_bytes() == b"original"
     assert manager.remove_from_queue("trip.mp4") is False
+
+
+def test_import_and_remove_deletes_working_copy_when_origin_exists(
+    tmp_path, monkeypatch
+):
+    manager, folders = make_manager(tmp_path, monkeypatch)
+    external = tmp_path / "external" / "clip.mp4"
+    external.parent.mkdir()
+    external.write_bytes(b"origin-bytes")
+
+    dest = manager.import_from_external(external)
+    assert dest is not None
+    assert dest.read_bytes() == b"origin-bytes"
+    assert dest.name == "clip.mp4"
+
+    # Origin still exists → remove deletes the working copy
+    assert manager.remove_from_queue("clip.mp4") is True
+    assert not dest.exists()
+    assert external.read_bytes() == b"origin-bytes"
+    assert not (folders["REMOVED_DIR"] / "clip.mp4").exists()
+    assert manager.remove_from_queue("clip.mp4") is False
+
+
+def test_import_and_remove_moves_when_origin_missing(tmp_path, monkeypatch):
+    manager, folders = make_manager(tmp_path, monkeypatch)
+    external = tmp_path / "external" / "clip.mp4"
+    external.parent.mkdir()
+    external.write_bytes(b"origin-bytes")
+
+    dest = manager.import_from_external(external)
+    assert dest is not None
+
+    external.unlink()  # origin gone
+
+    assert manager.remove_from_queue("clip.mp4") is True
+    assert not dest.exists()
+    assert (folders["REMOVED_DIR"] / "clip.mp4").read_bytes() == b"origin-bytes"

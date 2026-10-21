@@ -5,8 +5,7 @@ import time
 from pathlib import Path
 
 import config
-from PySide6.QtCore import QThread, QTimer, Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QThread, QTimer, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -25,16 +24,13 @@ from PySide6.QtWidgets import (
 )
 
 from core.jobmanager import JobManager
-from core.paths import ROOT_DIR, OUTPUT_DIR, ERROR_DIR, LOGS_DIR
-from core.settings import load_settings, save_settings
+from core.paths import ROOT_DIR
 from gui.settings_dialog import SettingsDialog
 from gui.worker import ProcessingWorker
 
 
 class MainWindow(QMainWindow):
     """Primary BlurGPT window."""
-
-    VIDEO_SUFFIXES = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".wmv"}
 
     def __init__(self):
         super().__init__()
@@ -49,9 +45,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(f"{config.APP_NAME} {config.VERSION}")
         self.setMinimumSize(900, 620)
-        self.setAcceptDrops(True)
         self._build_ui()
-        self._load_advanced_preference()
 
         self._heartbeat = QTimer(self)
         self._heartbeat.setInterval(1000)
@@ -105,8 +99,8 @@ class MainWindow(QMainWindow):
         self.add_button.clicked.connect(self.add_videos)
         self.remove_button = QPushButton("Remove selected")
         self.remove_button.setToolTip(
-            "Move selected queued videos out of the queue to input_removed/. "
-            "Files are not permanently deleted."
+            "Remove selected queued videos. If an external origin exists, "
+            "the working copy is deleted; otherwise it is moved to input_removed/."
         )
         self.remove_button.clicked.connect(self.remove_selected_videos)
         self.refresh_button = QPushButton("Refresh")
@@ -225,80 +219,38 @@ class MainWindow(QMainWindow):
         self.start_button.setEnabled(count > 0)
         self.remove_button.setEnabled(count > 0)
 
-    def _add_video_files(self, files):
+    def add_videos(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "Select videos", str(ROOT_DIR),
+            "Videos (*.mp4 *.mov *.avi *.mkv *.m4v *.wmv)",
+        )
         if not files:
             return
         copied = 0
         renamed = 0
         skipped = 0
-        input_root = self.manager.input_dir.resolve()
         for filename in files:
             source = Path(filename)
-            if not source.is_file() or source.suffix.lower() not in self.VIDEO_SUFFIXES:
+            destination = self.manager.import_from_external(source)
+            if destination is None:
+                # Already under input/ or invalid/unreadable.
+                try:
+                    source.resolve().relative_to(self.manager.input_dir.resolve())
+                    skipped += 1
+                except ValueError:
+                    pass
                 continue
-            # Do not duplicate a file that is already inside input/.
-            try:
-                source.resolve().relative_to(input_root)
-                skipped += 1
-                continue
-            except ValueError:
-                pass
-            destination = self.manager.get_unique_input_path(source.name)
             if destination.name != source.name:
                 renamed += 1
-            try:
-                shutil.copy2(source, destination)
-                copied += 1
-            except OSError as error:
-                QMessageBox.warning(self, "Could not add video", f"{source.name}\n\n{error}")
+            copied += 1
         self.refresh_jobs()
         if copied or skipped:
-            message = f"Added {copied} video{'s' if copied != 1 else ''} to the queue"
+            message = f"Added {copied} video{'s' if copied != 1 else ''}"
             if skipped:
                 message += f" — {skipped} already in queue (skipped)"
             if renamed:
                 message += f" — {renamed} renamed to avoid filename collision"
             self.status_label.setText(message)
-        else:
-            self.status_label.setText("No supported video files were added")
-
-    def add_videos(self):
-        files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Select videos",
-            str(ROOT_DIR),
-            "Videos (*.mp4 *.mov *.avi *.mkv *.m4v *.wmv)",
-        )
-        self._add_video_files(files)
-
-    def _has_supported_drop(self, event):
-        if not event.mimeData().hasUrls():
-            return False
-        return any(
-            url.isLocalFile()
-            and Path(url.toLocalFile()).suffix.lower() in self.VIDEO_SUFFIXES
-            for url in event.mimeData().urls()
-        )
-
-    def dragEnterEvent(self, event):
-        if self._has_supported_drop(event):
-            event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event):
-        files = [
-            url.toLocalFile()
-            for url in event.mimeData().urls()
-            if url.isLocalFile()
-            and Path(url.toLocalFile()).is_file()
-            and Path(url.toLocalFile()).suffix.lower() in self.VIDEO_SUFFIXES
-        ]
-        if not files:
-            event.ignore()
-            return
-        self._add_video_files(files)
-        event.acceptProposedAction()
 
     def remove_selected_videos(self):
         selected = self.queue_list.selectedItems()
@@ -335,9 +287,10 @@ class MainWindow(QMainWindow):
         count = len(filenames)
         answer = QMessageBox.question(
             self, "Remove from queue",
-            f"Move {count} selected video{'s' if count != 1 else ''} out of the BlurGPT queue?\n\n"
-            "They will be moved to the input_removed/ folder and can be recovered from there. "
-            "Nothing is permanently deleted.",
+            f"Remove {count} selected video{'s' if count != 1 else ''} from the BlurGPT queue?\n\n"
+            "If the video was imported from outside the project and that origin still exists, "
+            "only the working copy is deleted. Otherwise the file is moved to input_removed/ "
+            "so a sole copy is never destroyed.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
         if answer != QMessageBox.Yes:
@@ -350,7 +303,7 @@ class MainWindow(QMainWindow):
             except OSError as error:
                 QMessageBox.warning(self, "Could not remove video", f"{filename}\n\n{error}")
         self.refresh_jobs()
-        self.status_label.setText(f"Moved {removed} video{'s' if removed != 1 else ''} to input_removed/")
+        self.status_label.setText(f"Removed {removed} video{'s' if removed != 1 else ''} from the queue")
 
     def open_settings(self):
         if self.thread is not None and self.thread.isRunning():
@@ -359,28 +312,11 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             self.status_label.setText("Settings saved — ready for the next run")
 
-    def _load_advanced_preference(self):
-        """Restore the last Clean/Advanced choice from settings.json."""
-        try:
-            settings = load_settings()
-            advanced = bool(settings.get("gui_advanced_mode", False))
-        except Exception:
-            advanced = False
-        self.mode_button.setChecked(advanced)
-        self._toggle_advanced(advanced)
-
     def _toggle_advanced(self, checked):
         self._advanced_mode = bool(checked)
         self.mode_button.setText("Clean" if checked else "Advanced")
         self.metrics_card.setVisible(checked)
         self.adjustSize()
-        # Persist immediately so the next launch remembers the choice.
-        try:
-            settings = load_settings()
-            settings["gui_advanced_mode"] = self._advanced_mode
-            save_settings(settings)
-        except Exception:
-            pass
 
     def _on_start_button_clicked(self):
         if self.thread is not None and self.thread.isRunning():
@@ -483,59 +419,6 @@ class MainWindow(QMainWindow):
             f"Worker active • elapsed {minutes:02d}:{seconds:02d} • last frame progress {self._last_progress}%"
         )
 
-    def _show_summary_dialog(self, result):
-        """Show a short completion summary with optional folder shortcuts."""
-        succeeded = int(result.get("succeeded", 0))
-        failed = int(result.get("failed", 0))
-        cancelled = bool(result.get("cancelled"))
-
-        if cancelled:
-            title = "Processing cancelled"
-            body = (
-                f"Cancelled safely.\n\n"
-                f"Succeeded: {succeeded}\n"
-                f"Failed: {failed}\n\n"
-                "The current job was returned to the input queue when possible. "
-                "Partial temporary output was cleaned up."
-            )
-        else:
-            title = "Processing finished"
-            body = (
-                f"Finished.\n\n"
-                f"Succeeded: {succeeded}\n"
-                f"Failed: {failed}"
-            )
-
-        box = QMessageBox(self)
-        box.setWindowTitle(title)
-        box.setText(body)
-        box.setIcon(QMessageBox.Information if not failed else QMessageBox.Warning)
-
-        open_output = box.addButton("Open output/", QMessageBox.ActionRole)
-        open_errors = None
-        if failed:
-            open_errors = box.addButton("Open input_error/", QMessageBox.ActionRole)
-        open_logs = box.addButton("Open logs/", QMessageBox.ActionRole)
-        box.addButton(QMessageBox.Close)
-
-        box.exec()
-
-        clicked = box.clickedButton()
-        if clicked == open_output:
-            self._open_folder(OUTPUT_DIR)
-        elif open_errors is not None and clicked == open_errors:
-            self._open_folder(ERROR_DIR)
-        elif clicked == open_logs:
-            self._open_folder(LOGS_DIR)
-
-    def _open_folder(self, path):
-        """Open a folder in the system file manager. Creates it if missing."""
-        try:
-            path.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve())))
-
     def _on_finished(self, result):
         self._heartbeat.stop()
         self._metrics_refresh.stop()
@@ -547,7 +430,6 @@ class MainWindow(QMainWindow):
         self.heartbeat_label.setText("Idle")
         self._set_processing_state(False)
         self.refresh_jobs()
-        self._show_summary_dialog(result)
         if self._closing_after_processing:
             self.close()
 
@@ -555,29 +437,37 @@ class MainWindow(QMainWindow):
         self._heartbeat.stop()
         self._metrics_refresh.stop()
         self._processing_started_at = None
-        self.status_label.setText(f"Failed: {message}")
-        self.heartbeat_label.setText("Idle")
+        self.heartbeat_label.setText("Worker stopped")
         self._set_processing_state(False)
-        self.refresh_jobs()
-        QMessageBox.critical(self, "Processing failed", message)
+        QMessageBox.critical(self, "BlurGPT processing error", message)
 
     def _cleanup_worker(self):
-        self.thread = None
+        if self.worker is not None:
+            self.worker.deleteLater()
         self.worker = None
+        if self.thread is not None:
+            self.thread.deleteLater()
+        self.thread = None
+        self.refresh_jobs()
 
     def _set_processing_state(self, running):
         self.add_button.setEnabled(not running)
         self.remove_button.setEnabled(not running)
         self.refresh_button.setEnabled(not running)
         self.settings_button.setEnabled(not running)
-        self.mode_button.setEnabled(not running)
-        self.start_button.setEnabled(True)
+
         if running:
-            self.start_button.setText("Stop")
             self.start_button.setObjectName("stopButton")
+            self.start_button.setText("Stop processing")
+            self.start_button.setToolTip("Safely stop the current processing job")
         else:
-            self.start_button.setText("Start processing")
             self.start_button.setObjectName("primaryButton")
+            self.start_button.setText("Start processing")
+            self.start_button.setToolTip("")
+            self.start_button.setEnabled(bool(self.manager.find_jobs()))
+
+        # Object-name based QSS is cached by Qt; repolish so the button changes
+        # immediately when switching between Start and Stop states.
         self.start_button.style().unpolish(self.start_button)
         self.start_button.style().polish(self.start_button)
 
@@ -585,8 +475,9 @@ class MainWindow(QMainWindow):
         if self.thread is not None and self.thread.isRunning():
             answer = QMessageBox.question(
                 self,
-                "Processing is running",
-                "A job is still running. Cancel it and close?",
+                "BlurGPT is processing",
+                "A video is still being processed.\n\n"
+                "Stop the current job and close BlurGPT?",
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No,
             )
@@ -597,14 +488,4 @@ class MainWindow(QMainWindow):
             self.cancel_processing()
             event.ignore()
             return
-        event.accept()
-
-
-def run():
-    """Start the Qt application."""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    window = MainWindow()
-    window.show()
-    return app.exec()
+        super().closeEvent(event)
