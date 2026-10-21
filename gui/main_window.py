@@ -5,7 +5,8 @@ import time
 from pathlib import Path
 
 import config
-from PySide6.QtCore import QThread, QTimer, Qt
+from PySide6.QtCore import QThread, QTimer, Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -24,7 +25,8 @@ from PySide6.QtWidgets import (
 )
 
 from core.jobmanager import JobManager
-from core.paths import ROOT_DIR
+from core.paths import ERROR_DIR, LOGS_DIR, OUTPUT_DIR, ROOT_DIR
+from core.settings import load_settings, save_settings
 from gui.settings_dialog import SettingsDialog
 from gui.worker import ProcessingWorker
 
@@ -45,7 +47,9 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(f"{config.APP_NAME} {config.VERSION}")
         self.setMinimumSize(900, 620)
+        self.setAcceptDrops(True)
         self._build_ui()
+        self._load_advanced_preference()
 
         self._heartbeat = QTimer(self)
         self._heartbeat.setInterval(1000)
@@ -219,11 +223,9 @@ class MainWindow(QMainWindow):
         self.start_button.setEnabled(count > 0)
         self.remove_button.setEnabled(count > 0)
 
-    def add_videos(self):
-        files, _ = QFileDialog.getOpenFileNames(
-            self, "Select videos", str(ROOT_DIR),
-            "Videos (*.mp4 *.mov *.avi *.mkv *.m4v *.wmv)",
-        )
+    VIDEO_SUFFIXES = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".wmv"}
+
+    def _add_video_files(self, files):
         if not files:
             return
         copied = 0
@@ -233,7 +235,6 @@ class MainWindow(QMainWindow):
             source = Path(filename)
             destination = self.manager.import_from_external(source)
             if destination is None:
-                # Already under input/ or invalid/unreadable.
                 try:
                     source.resolve().relative_to(self.manager.input_dir.resolve())
                     skipped += 1
@@ -251,6 +252,46 @@ class MainWindow(QMainWindow):
             if renamed:
                 message += f" — {renamed} renamed to avoid filename collision"
             self.status_label.setText(message)
+        else:
+            self.status_label.setText("No supported video files were added")
+
+    def _has_supported_drop(self, event):
+        if not event.mimeData().hasUrls():
+            return False
+        return any(
+            url.isLocalFile()
+            and Path(url.toLocalFile()).suffix.lower() in self.VIDEO_SUFFIXES
+            for url in event.mimeData().urls()
+        )
+
+    def dragEnterEvent(self, event):
+        if self._has_supported_drop(event):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        files = [
+            url.toLocalFile()
+            for url in event.mimeData().urls()
+            if url.isLocalFile()
+            and Path(url.toLocalFile()).is_file()
+            and Path(url.toLocalFile()).suffix.lower() in self.VIDEO_SUFFIXES
+        ]
+        if not files:
+            event.ignore()
+            return
+        self._add_video_files(files)
+        event.acceptProposedAction()
+
+    def add_videos(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select videos",
+            str(ROOT_DIR),
+            "Videos (*.mp4 *.mov *.avi *.mkv *.m4v *.wmv)",
+        )
+        self._add_video_files(files)
 
     def remove_selected_videos(self):
         selected = self.queue_list.selectedItems()
@@ -312,11 +353,27 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             self.status_label.setText("Settings saved — ready for the next run")
 
-    def _toggle_advanced(self, checked):
+    def _load_advanced_preference(self):
+        """Restore the last Clean/Advanced choice from settings.json."""
+        try:
+            advanced = bool(load_settings().get("gui_advanced_mode", False))
+        except Exception:
+            advanced = False
+        self.mode_button.setChecked(advanced)
+        self._toggle_advanced(advanced, persist=False)
+
+    def _toggle_advanced(self, checked, persist=True):
         self._advanced_mode = bool(checked)
         self.mode_button.setText("Clean" if checked else "Advanced")
         self.metrics_card.setVisible(checked)
         self.adjustSize()
+        if persist:
+            try:
+                settings = load_settings()
+                settings["gui_advanced_mode"] = self._advanced_mode
+                save_settings(settings)
+            except (OSError, ValueError):
+                self.status_label.setText("Could not save the Advanced mode preference")
 
     def _on_start_button_clicked(self):
         if self.thread is not None and self.thread.isRunning():
@@ -419,6 +476,52 @@ class MainWindow(QMainWindow):
             f"Worker active • elapsed {minutes:02d}:{seconds:02d} • last frame progress {self._last_progress}%"
         )
 
+    def _show_summary_dialog(self, result):
+        """Show a completion summary with shortcuts to relevant folders."""
+        succeeded = int(result.get("succeeded", 0))
+        failed = int(result.get("failed", 0))
+        cancelled = bool(result.get("cancelled"))
+
+        if cancelled:
+            title = "Processing cancelled"
+            body = (
+                "Cancelled safely.\n\n"
+                f"Succeeded: {succeeded}\n"
+                f"Failed: {failed}\n\n"
+                "The current job was returned to the input queue when possible. "
+                "Partial temporary output was cleaned up."
+            )
+        else:
+            title = "Processing finished"
+            body = f"Finished.\n\nSucceeded: {succeeded}\nFailed: {failed}"
+
+        box = QMessageBox(self)
+        box.setWindowTitle(title)
+        box.setText(body)
+        box.setIcon(QMessageBox.Information if not failed else QMessageBox.Warning)
+        open_output = box.addButton("Open output/", QMessageBox.ActionRole)
+        open_errors = box.addButton("Open input_error/", QMessageBox.ActionRole) if failed else None
+        open_logs = box.addButton("Open logs/", QMessageBox.ActionRole)
+        box.addButton(QMessageBox.Close)
+        box.exec()
+
+        clicked = box.clickedButton()
+        if clicked == open_output:
+            self._open_folder(OUTPUT_DIR)
+        elif open_errors is not None and clicked == open_errors:
+            self._open_folder(ERROR_DIR)
+        elif clicked == open_logs:
+            self._open_folder(LOGS_DIR)
+
+    @staticmethod
+    def _open_folder(path):
+        """Open a folder in the system file manager."""
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve())))
+
     def _on_finished(self, result):
         self._heartbeat.stop()
         self._metrics_refresh.stop()
@@ -430,6 +533,7 @@ class MainWindow(QMainWindow):
         self.heartbeat_label.setText("Idle")
         self._set_processing_state(False)
         self.refresh_jobs()
+        self._show_summary_dialog(result)
         if self._closing_after_processing:
             self.close()
 
