@@ -1,6 +1,6 @@
 # BlurGPT Architecture
 
-This document describes the runtime architecture of the current BlurGPT implementation (**0.5.0**).
+This document describes the runtime architecture of the current BlurGPT implementation on `feature/pyside6-gui` (GUI branch; main remains 0.5.0).
 
 ## Runtime pipeline
 
@@ -8,7 +8,7 @@ This document describes the runtime architecture of the current BlurGPT implemen
 Video file
     │
     ▼
-JobManager
+JobManager (origin-aware import/remove)
     │
     ▼
 VideoProcessor (OpenCV decode + NVENC or OpenCV encode)
@@ -29,25 +29,25 @@ processing/ → input_error/   (failure)
 
 On success the original input is moved to `input_archive/`. On failure, `JobManager.fail()` moves the input to `input_error/`, deletes partial temp output, and appends `logs/errors.log`.
 
+Queue Remove is origin-aware: working copy under `input/` is deleted when a known external origin still exists; otherwise it is moved to `input_removed/` (sole-copy safety).
+
 ## Module responsibilities
 
-### `blurGPT.py`
+### `core/paths.py`
 
-Application entry point and orchestration layer. It:
+Application root resolution (`application_root()` supports `sys.frozen` for portable Windows builds). Defines all data directories. Provides the single `resolve_ffmpeg()` helper used by preflight, VideoProcessor, and benchmarks (bundled `ffmpeg/` preferred, then PATH).
 
-1. Creates the `JobManager` and discovers pending jobs.
-2. Loads **one** `Detector` for the whole batch.
-3. For each job: `start` → process frames inside `try/except` → `finish` or `fail`.
-4. Resets detector motion state between videos (`detector.reset()`).
-5. Prints the processing report and appends a benchmark record.
+### `blurGPT.py` / GUI entry
+
+CLI and GUI share the same Qt-free `BatchProcessor`. Both call preflight before processing.
 
 ### `config.py`
 
-Central configuration for the runtime: model path, CUDA device, detection interval, inference size, pixelation parameters, and video encoder settings (`VIDEO_ENCODER`, NVENC CQ/preset, OpenCV codec fallback).
+Central defaults for the runtime: model path, CUDA device, detection interval, inference size, pixelation parameters, and video encoder settings (`VIDEO_ENCODER`, NVENC CQ/preset, OpenCV codec fallback). Runtime overrides live in `config/settings.json`.
 
 ### `core/jobmanager.py`
 
-Controls the file-based job lifecycle.
+Controls the file-based job lifecycle and tracks import origins (`config/queue_origins.json`).
 
 Supported input extensions:
 
@@ -74,7 +74,7 @@ logs/errors.log ← one line
 
 ### `core/video.py`
 
-Video input/output. Validates that the capture opens, resolution is positive, and FPS is positive. Encoding is either:
+Video input/output. Uses `resolve_ffmpeg()` for the encoder path. Encoding is either:
 
 - FFmpeg pipe with `h264_nvenc`, or
 - OpenCV `VideoWriter` with the configured codec.
@@ -106,7 +106,11 @@ Applies pixelation to `Detection` regions (`PIXEL_SIZE`, optional `BOX_MARGIN`).
 
 ### `core/report.py` / `core/benchmark.py`
 
-In-run statistics (`perf_counter`) and append-only `logs/benchmarks.jsonl` records (FPS, component times, encoder, environment).
+In-run statistics (`perf_counter`) and append-only `logs/benchmarks.jsonl` records (FPS, component times, encoder, environment). Benchmarks also use `resolve_ffmpeg()`.
+
+### `core/preflight.py`
+
+Shared preflight checks (model, FFmpeg/NVENC via `resolve_ffmpeg()`, settings) used by both CLI and GUI.
 
 ## Detection model
 
@@ -132,10 +136,11 @@ If no valid motion estimate exists, the predictor falls back to the latest detec
 
 ## Design boundaries
 
-BlurGPT separates job/file management, video I/O, detection, internal detection data, motion prediction, anonymization, and reporting so each piece can evolve independently.
+BlurGPT separates job/file management, video I/O, detection, internal detection data, motion prediction, anonymization, and reporting so each piece can evolve independently. Path and FFmpeg resolution are centralized in `core/paths.py`.
 
 ## Current limitations
 
 - Matching is still greedy and lightweight; heavy occlusion or large jumps can produce imperfect boxes.
 - Full trackers remain out of product scope unless a measured quality or FPS gain is shown.
 - Concurrent GPU use (e.g. OBS) reduces processing throughput; use benchmark logs for apples-to-apples comparison.
+- Portable Windows packaging is prepared via `sys.frozen` paths but not yet released as a frozen binary.
