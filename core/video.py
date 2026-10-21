@@ -1,11 +1,10 @@
-import shutil
 import subprocess
 import time
 from pathlib import Path
 
 import cv2
 
-from core.paths import BUNDLED_FFMPEG_PATH
+from core.paths import resolve_ffmpeg
 
 
 class VideoProcessor:
@@ -78,21 +77,10 @@ class VideoProcessor:
 
         self.write_backend = f"opencv:{codec}"
 
-    def _resolve_ffmpeg(self):
-        """Prefer the portable bundled FFmpeg, then fall back to PATH."""
-        bundled = Path(BUNDLED_FFMPEG_PATH)
-        if bundled.is_file():
-            return str(bundled)
-
-        ffmpeg_path = shutil.which("ffmpeg")
-        if ffmpeg_path:
-            return ffmpeg_path
-
-        return None
-
     def _create_nvenc_writer(self):
         """Create an FFmpeg pipe using NVIDIA hardware H.264 encoding."""
-        ffmpeg_path = self._resolve_ffmpeg()
+        ffmpeg = resolve_ffmpeg()
+        ffmpeg_path = str(ffmpeg) if ffmpeg else None
 
         if ffmpeg_path is None:
             self.cap.release()

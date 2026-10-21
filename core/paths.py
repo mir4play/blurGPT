@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -35,3 +36,18 @@ MODEL_DIR = ROOT_DIR / "models"
 DEFAULT_MODEL_PATH = MODEL_DIR / "blurGPT.pt"
 FFMPEG_DIR = ROOT_DIR / "ffmpeg"
 BUNDLED_FFMPEG_PATH = FFMPEG_DIR / ("ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
+
+
+def resolve_ffmpeg() -> Path | None:
+    """Return the preferred FFmpeg executable, or None if none is available.
+
+    Prefers the portable bundled copy next to the application root, then falls
+    back to an FFmpeg found on PATH. This is the single source of truth used by
+    preflight, VideoProcessor, and benchmark collection.
+    """
+    bundled = Path(BUNDLED_FFMPEG_PATH)
+    if bundled.is_file():
+        return bundled
+
+    system = shutil.which("ffmpeg")
+    return Path(system) if system else None
