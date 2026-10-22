@@ -2,7 +2,7 @@ import time
 
 
 class Stats:
-    """Store processing statistics."""
+    """Store processing statistics and expose lightweight live metrics."""
 
     def __init__(self):
         self.start_time = time.perf_counter()
@@ -38,6 +38,27 @@ class Stats:
             return 0
         return self.frames / total
 
+    def snapshot(self, total_frames=0, video_fps=0.0, width=0, height=0,
+                 encoder="", device=None):
+        """Return a GUI-safe snapshot of the current processing metrics."""
+        elapsed = self.total_time
+        percent = (self.frames / total_frames * 100) if total_frames else 0.0
+        return {
+            "frames": self.frames,
+            "total_frames": int(total_frames or 0),
+            "percent": min(100.0, percent),
+            "elapsed": elapsed,
+            "fps": self.fps,
+            "video_fps": float(video_fps or 0.0),
+            "width": int(width or 0),
+            "height": int(height or 0),
+            "yolo": self.tempo_yolo,
+            "pixel": self.tempo_pixel,
+            "write": self.tempo_write,
+            "encoder": encoder,
+            "device": device,
+        }
+
 
 def print_report(stats, video):
     """Print the final processing report."""
@@ -45,12 +66,12 @@ def print_report(stats, video):
     print()
     print("========== BlurGPT ==========")
     print(f"Frames..............: {stats.frames}")
-    print(f"Tempo...............: {stats.total_time:.2f} s")
-    print(f"FPS médio...........: {stats.fps:.2f}")
-    print(f"Resolução...........: {video.width}x{video.height}")
-    print(f"FPS do vídeo........: {video.fps:.2f}")
+    print(f"Time................: {stats.total_time:.2f} s")
+    print(f"Average FPS.........: {stats.fps:.2f}")
+    print(f"Resolution..........: {video.width}x{video.height}")
+    print(f"Video FPS...........: {video.fps:.2f}")
     print(f"Encoder.............: {video.write_backend}")
-    print(f"Tempo YOLO..........: {stats.tempo_yolo:.2f}s")
-    print(f"Tempo Pixel.........: {stats.tempo_pixel:.2f}s")
-    print(f"Tempo Gravação......: {stats.tempo_write:.2f}s")
+    print(f"YOLO time...........: {stats.tempo_yolo:.2f}s")
+    print(f"Pixelation time.....: {stats.tempo_pixel:.2f}s")
+    print(f"Write time..........: {stats.tempo_write:.2f}s")
     print("============================")
