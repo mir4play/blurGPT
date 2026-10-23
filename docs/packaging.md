@@ -12,6 +12,25 @@ Notes for a future packaged/portable Windows GUI build of BlurGPT (so end users 
 
 This keeps a portable layout predictable and avoids depending on the current working directory.
 
+## How to produce a local frozen build
+
+A starter PyInstaller spec is in the repository root: `blurGPT.spec` (added in #49).
+
+On a Windows machine with the project dependencies installed (PySide6, torch+CUDA, ultralytics, opencv-python, etc.):
+
+```bat
+pyinstaller blurGPT.spec
+```
+
+This produces `dist/BlurGPT/` (onedir by default). Copy or place the following next to `BlurGPT.exe` before running:
+
+- `models/blurGPT.pt` (required; not embedded by default because it is large)
+- Optionally `ffmpeg/ffmpeg.exe` (preferred over PATH; CUDA/NVENC build recommended)
+
+The app will create `config/`, `input/`, `output/`, etc. at runtime next to the executable. See the suggested layout below.
+
+Switch the spec to onefile by adjusting the `EXE`/`COLLECT` sections if a single-file binary is preferred (startup may be slower).
+
 ## Suggested portable layout (for a future build)
 
 ```text
@@ -36,7 +55,8 @@ Place the YOLO model and (optionally) a CUDA-enabled FFmpeg with NVENC next to t
 
 ## Checklist before a testable frozen build
 
-- [ ] Confirm `sys.frozen` path resolution works under PyInstaller (or chosen freezer) on Windows.
+- [x] Starter PyInstaller spec (`blurGPT.spec`) present.
+- [ ] Confirm `sys.frozen` path resolution works under PyInstaller on Windows.
 - [ ] Bundle or document the YOLO model (`models/blurGPT.pt`).
 - [ ] Decide FFmpeg strategy: bundled `ffmpeg.exe` with `h264_nvenc`, or require it on PATH.
 - [ ] Verify CUDA/PyTorch runtime dependencies are either bundled or clearly required (current app requires CUDA at startup).
@@ -46,6 +66,6 @@ Place the YOLO model and (optionally) a CUDA-enabled FFmpeg with NVENC next to t
 
 ## Status
 
-No frozen binary is produced by CI yet. This document is readiness notes only. When a packaged Windows GUI build is available for local testing, it will be announced on the relevant issues (#14 / #23).
+No frozen binary is produced by CI yet. The starter spec is available for local Windows builds. When a packaged Windows GUI build is available for local testing, it will be announced on the relevant issues (#14 / #23).
 
 Related: #14 (GUI backlog), #23 (handoff), #29 (release gates). Do not bump version or tag until a real release milestone is validated on `main`.
