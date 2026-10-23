@@ -66,6 +66,16 @@ Place the YOLO model and (optionally) a CUDA-enabled FFmpeg with NVENC next to t
 
 ## Status
 
-No frozen binary is produced by CI yet. The starter spec is available for local Windows builds. When a packaged Windows GUI build is available for local testing, it will be announced on the relevant issues (#14 / #23).
+**Ready for local Windows frozen-build smoke-test.**
 
-Related: #14 (GUI backlog), #23 (handoff), #29 (release gates). Do not bump version or tag until a real release milestone is validated on `main`.
+The starter PyInstaller spec (`blurGPT.spec`) and these notes are on `main`. A user with the development environment can now run:
+
+```bat
+pyinstaller blurGPT.spec
+```
+
+then place `models/blurGPT.pt` (and optionally `ffmpeg/ffmpeg.exe`) next to `dist/BlurGPT/BlurGPT.exe` and launch the GUI.
+
+No frozen binary is produced by CI yet. When a pre-built portable package is available it will be announced on #14 / #23. Do not bump version or tag until a real release milestone is validated on `main` (see #29).
+
+Related: #14 (GUI backlog), #23 (handoff), #29 (release gates).
