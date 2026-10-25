@@ -3,8 +3,6 @@
 from pathlib import Path
 import subprocess
 
-import torch
-
 from core.paths import ROOT_DIR, resolve_ffmpeg
 from core.settings import load_settings, validate_settings
 
@@ -58,6 +56,16 @@ def validate_processing_environment(settings=None):
 
     device = effective["device"]
     if device == "cpu":
+        return errors
+
+    # Lazy import so unit tests and CPU-only paths do not require torch.
+    try:
+        import torch
+    except ImportError:
+        errors.append(
+            "PyTorch is not installed, but the selected processing device is GPU.\n"
+            "Choose CPU in Settings or install a CUDA-enabled PyTorch environment."
+        )
         return errors
 
     if not torch.cuda.is_available():

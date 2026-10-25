@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 import core.preflight as preflight_module
 import core.settings as settings_module
 
@@ -45,7 +47,11 @@ def test_save_and_load_settings_round_trip(tmp_path, monkeypatch):
 
 def test_preflight_reports_missing_model_without_gpu_dependency(tmp_path, monkeypatch):
     values = settings_module.DEFAULTS.copy()
-    values.update({"model_path": str(tmp_path / "missing.pt"), "device": "cpu"})
+    values.update({
+        "model_path": str(tmp_path / "missing.pt"),
+        "device": "cpu",
+        "video_encoder": "opencv",
+    })
 
     monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
 
@@ -56,14 +62,17 @@ def test_preflight_reports_missing_model_without_gpu_dependency(tmp_path, monkey
 
 
 def test_preflight_reports_unavailable_cuda_device(tmp_path, monkeypatch):
+    pytest.importorskip("torch")
+    import torch
+
     model = tmp_path / "model.pt"
     model.write_bytes(b"model")
     values = settings_module.DEFAULTS.copy()
     values.update({"model_path": str(model), "device": 2, "video_encoder": "opencv"})
 
     monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
-    monkeypatch.setattr(preflight_module.torch.cuda, "is_available", lambda: True)
-    monkeypatch.setattr(preflight_module.torch.cuda, "device_count", lambda: 1)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
 
     errors = preflight_module.validate_processing_environment()
 
