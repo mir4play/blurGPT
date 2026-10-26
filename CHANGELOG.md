@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now on `main` (HEAD `c8a61c5`).
+GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now on `main` (HEAD `631f5bf`, including the Unreleased note via #56).
 
 No version bump or tag yet. Awaiting user Windows frozen-build smoke-test (scheduled 2026-10-26) and release-gate review per #29 before considering 0.6.0.
 
