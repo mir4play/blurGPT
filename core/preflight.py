@@ -5,7 +5,7 @@ import subprocess
 
 import torch
 
-from core.paths import ROOT_DIR, resolve_ffmpeg
+from core.paths import DEFAULT_MODEL_PATH, ROOT_DIR, resolve_ffmpeg
 from core.settings import load_settings, validate_settings
 
 
@@ -51,7 +51,10 @@ def validate_processing_environment(settings=None):
 
     model_path = _resolve_model_path(effective["model_path"])
     if not model_path.is_file():
-        errors.append(f"YOLO model was not found:\n{model_path}")
+        errors.append(
+            f"YOLO model was not found:\n{model_path}\n\n"
+            f"Place the model file at:\n{DEFAULT_MODEL_PATH}"
+        )
 
     if effective["video_encoder"] == "h264_nvenc":
         _validate_nvenc(errors)
