@@ -59,6 +59,7 @@ def test_preflight_reports_missing_model_without_gpu_dependency(tmp_path, monkey
 
     assert len(errors) == 1
     assert "YOLO model was not found" in errors[0]
+    assert "Place the model file at:" in errors[0]
 
 
 def test_preflight_reports_unavailable_cuda_device(tmp_path, monkeypatch):
