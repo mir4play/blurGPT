@@ -1,6 +1,7 @@
 import json
 import platform
 import subprocess
+import sys
 from datetime import datetime, timezone
 
 import torch
@@ -17,12 +18,19 @@ def _ffmpeg_version():
     if not ffmpeg_path:
         return "not available"
     try:
+        run_kwargs = {
+            "capture_output": True,
+            "text": True,
+            "timeout": 5,
+            "check": False,
+        }
+        if sys.platform == "win32":
+            # Prevent a visible console window when the GUI is frozen (windowed).
+            run_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
         result = subprocess.run(
             [str(ffmpeg_path), "-version"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
+            **run_kwargs,
         )
         first_line = result.stdout.splitlines()
         return first_line[0] if first_line else "unknown"

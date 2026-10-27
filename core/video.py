@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -108,13 +109,17 @@ class VideoProcessor:
             self.output_video,
         ]
 
-        self.ffmpeg = subprocess.Popen(
-            command,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            bufsize=0,
-        )
+        popen_kwargs = {
+            "stdin": subprocess.PIPE,
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.PIPE,
+            "bufsize": 0,
+        }
+        if sys.platform == "win32":
+            # Prevent a visible console window when the GUI is frozen (windowed).
+            popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
+        self.ffmpeg = subprocess.Popen(command, **popen_kwargs)
 
         self.write_backend = "ffmpeg:h264_nvenc"
 
