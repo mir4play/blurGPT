@@ -24,6 +24,31 @@ Portable / frozen Windows builds use `core/paths.py` (`application_root()` detec
 
 ---
 
+## Frozen Windows layout
+
+A frozen build creates its runtime folders next to `BlurGPT.exe`. The model directory is created on GUI startup even when it is empty, so users have an obvious location for the external model file:
+
+```text
+BlurGPT/
+├── BlurGPT.exe
+├── models/
+│   └── blurGPT.pt       # place the model here when it is not bundled
+├── input/
+├── output/
+├── input_archive/
+├── input_error/
+├── input_removed/
+├── processing/
+├── temp/
+├── logs/
+├── config/
+└── ffmpeg/
+```
+
+`blurGPT.pt` is intentionally not created or bundled by the runtime-directory initializer. If the model is missing, preflight reports the resolved path and explicitly tells the user to place the model at `models/blurGPT.pt`.
+
+---
+
 ## Architecture (short)
 
 ```text
@@ -35,7 +60,7 @@ gui.py
                     ├── JobManager
                     ├── Detector / MotionPredictor
                     ├── VideoProcessor
-                    └── settings / benchmarks / preflight / paths
+                    └── settings / benchmarks / preflight / paths / runtime
 ```
 
 **Rules:**
@@ -45,6 +70,7 @@ gui.py
 3. **Settings outside source** — runtime prefs in `config/settings.json` (gitignored); `config.py` holds defaults only.
 4. **Cooperative cancel** — never kill the process mid-encode; use `request_cancel` and `JobManager.cancel`. NVENC/FFmpeg shutdown is hardened so cancellation is not turned into a failure.
 5. **Simple by default** — Clean mode first; Advanced metrics optional (preference persisted).
+6. **Portable runtime layout** — user-visible runtime folders are created beside the executable; external model assets are kept outside the executable and documented explicitly.
 
 ---
 
@@ -91,6 +117,7 @@ Keep the GUI **simple and functional**:
 - Prefer one shared `BatchProcessor` over duplicating CLI logic.
 - Prefer clear dialogs (missing model, missing FFmpeg, invalid settings) over silent fallback.
 - Avoid full trackers, parallel GPU jobs, and heavy UI frameworks unless measured need appears.
+- Keep frozen-build behavior covered by automated tests where practical, then validate the final Windows artifact manually.
 
 ---
 
