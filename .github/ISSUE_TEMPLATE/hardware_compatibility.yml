@@ -85,7 +85,6 @@ body:
         GPU driver:
         FFmpeg:
         Python (if running from source):
-      render: text
     validations:
       required: false
   - type: textarea
@@ -98,7 +97,6 @@ body:
         Clip duration or frame count:
         Profile or detect_every / imgsz:
         Any other relevant settings:
-      render: text
     validations:
       required: true
   - type: textarea
@@ -111,7 +109,6 @@ body:
         Processing FPS or elapsed time:
         Output opens and looks correct?:
         Notes:
-      render: text
     validations:
       required: true
   - type: textarea
@@ -119,6 +116,5 @@ body:
     attributes:
       label: Error details (optional)
       description: Paste only relevant error text after removing private paths, usernames, and other personal information. Do not attach raw logs without reviewing them.
-      render: text
     validations:
       required: false
