@@ -29,6 +29,7 @@ The compatibility strategy is deliberately incremental:
 - keep inference backend capability separate from video encoding capability; NVIDIA hardware does not automatically imply NVENC availability
 - keep backend-specific dependencies isolated so the existing Windows build does not inherit unnecessary packages
 - use separate build/package targets when a single universal executable would introduce unsafe or excessive dependencies
+- provide a structured, voluntary community report form and short benchmark guidance through [issue #63](https://github.com/mir4play/BlurGPT/issues/63), without adding telemetry or requiring the maintainer to test every alternative configuration
 
 No claim of universal GPU support should be made without backend-specific runtime validation and documented benchmark conditions.
 

@@ -1,0 +1,120 @@
+name: Hardware compatibility report
+description: Share a voluntary, reproducible BlurGPT test result for your hardware.
+title: "[Compatibility]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to report whether BlurGPT works on your hardware and, optionally, its performance.
+
+        **Do not upload source videos, anonymized output videos, model files, or unreviewed raw logs.** Redact usernames, private paths, and other personal information. No telemetry is collected by this report.
+  - type: dropdown
+    id: result
+    attributes:
+      label: Test result
+      description: Select the closest overall outcome.
+      options:
+        - Works as expected
+        - Works with limitations
+        - Fails to start
+        - Processing fails
+        - Performance concern
+        - Output-quality concern
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: BlurGPT version or build
+      description: Include a release version, commit SHA, or build date if known.
+      placeholder: "0.5.0 / commit SHA / portable build date"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux
+        - macOS
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: cpu
+    attributes:
+      label: CPU
+      description: Model name if known; optional for reports where unavailable.
+      placeholder: "e.g. Intel Core i7-13700H"
+    validations:
+      required: false
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU
+      description: Include model and VRAM if known. Write CPU-only if applicable.
+      placeholder: "e.g. NVIDIA RTX 4060 Laptop 8 GB / CPU-only"
+    validations:
+      required: true
+  - type: input
+    id: inference_backend
+    attributes:
+      label: Inference backend and device
+      description: Do not assume that a GPU model means a backend is supported.
+      placeholder: "e.g. NVIDIA CUDA device 0, CPU, AMD ROCm, Intel XPU"
+    validations:
+      required: true
+  - type: input
+    id: encoder
+    attributes:
+      label: Video encoder
+      description: Record the actual encoder reported by BlurGPT if available.
+      placeholder: "e.g. ffmpeg:h264_nvenc, opencv:mp4v, unknown"
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Runtime versions
+      description: Provide what you know; unknown values can be omitted.
+      placeholder: |
+        PyTorch:
+        CUDA / ROCm / XPU runtime:
+        GPU driver:
+        FFmpeg:
+        Python (if running from source):
+    validations:
+      required: false
+  - type: textarea
+    id: workload
+    attributes:
+      label: Test workload and settings
+      description: A short representative clip is enough; long benchmark runs are not required.
+      placeholder: |
+        Input resolution and FPS:
+        Clip duration or frame count:
+        Profile or detect_every / imgsz:
+        Any other relevant settings:
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Results
+      description: Say whether processing completed, whether the output opens, approximate FPS or elapsed time if available, and any visible quality limitations.
+      placeholder: |
+        Completed successfully?:
+        Processing FPS or elapsed time:
+        Output opens and looks correct?:
+        Notes:
+    validations:
+      required: true
+  - type: textarea
+    id: errors
+    attributes:
+      label: Error details (optional)
+      description: Paste only relevant error text after removing private paths, usernames, and other personal information. Do not attach raw logs without reviewing them.
+    validations:
+      required: false

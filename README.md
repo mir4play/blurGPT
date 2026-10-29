@@ -303,6 +303,7 @@ BlurGPT/
 ├── docs/
 │   ├── architecture.md
 │   ├── gui.md
+│   ├── compatibility.md
 │   ├── performance.md
 │   └── roadmap.md
 │
@@ -331,6 +332,7 @@ BlurGPT/
 
 - [`docs/architecture.md`](docs/architecture.md) — runtime architecture and responsibilities of each module
 - [`docs/gui.md`](docs/gui.md) — desktop GUI guide and development principles
+- [`docs/compatibility.md`](docs/compatibility.md) — volunteer hardware testing and compatibility reports
 - [`docs/performance.md`](docs/performance.md) — performance benchmarks and optimization decisions
 - [`docs/roadmap.md`](docs/roadmap.md) — current development priorities and future work
 - [`CHANGELOG.md`](CHANGELOG.md) — version history
