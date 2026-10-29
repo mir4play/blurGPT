@@ -6,9 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now on `main` (HEAD `5ac61cd`).
+GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now on `main` (HEAD `919a017`).
 
-No version bump or tag yet. Awaiting user Windows frozen-build smoke-test (deferred to 2026-10-27) and release-gate review per #29 before considering 0.6.0.
+Recent frozen-build polish and docs:
+- #64: suppress child console window on Windows frozen builds (`CREATE_NO_WINDOW` for FFmpeg subprocesses).
+- #65: initialize external `models/` directory on GUI startup; clearer missing-model preflight pointing at `models/blurGPT.pt`.
+- #66: community hardware compatibility feedback form and volunteer testing guide (README/roadmap links); NVIDIA/CUDA + NVENC remains the reference path.
+
+No version bump or tag yet. Awaiting user Windows frozen-build smoke-test (confirm no console window, models/ created, process/cancel OK) and release-gate review per #29 before considering 0.6.0.
 
 ---
 
