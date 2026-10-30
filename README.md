@@ -63,12 +63,14 @@ On failure, the input is moved to `input_error/` and a line is appended to `logs
 ## Requirements
 
 - Python **3.13**
-- NVIDIA GPU with CUDA support
-- PyTorch installed with CUDA support
+- PyTorch/Ultralytics dependencies compatible with the selected inference device
 - The Python dependencies listed in `requirements.txt`
-- **FFmpeg with `h264_nvenc` support** when using the recommended hardware encoder
+- An NVIDIA GPU with a compatible CUDA-enabled PyTorch build for the **maintainer-validated reference path**
+- **FFmpeg with `h264_nvenc` support** when using the recommended NVIDIA hardware encoder
 
-BlurGPT currently requires CUDA at startup. If CUDA is unavailable, the application stops instead of falling back to CPU processing.
+The default inference device is CUDA device 0. If that selected GPU is unavailable, preflight reports an error; BlurGPT does **not** silently switch to CPU. The GUI exposes an explicit CPU option. This path predates the current NVIDIA-optimized reference, has not been revalidated against the current packaged Windows build, and may be substantially slower.
+
+For a CPU-only attempt, select **CPU** as the inference device and **OpenCV / mp4v** as the video encoder. The default NVENC encoder still requires a compatible NVIDIA driver and FFmpeg build. See [hardware backend status](docs/hardware-backends.md) before treating any alternative configuration as supported.
 
 ### FFmpeg / NVENC
 
@@ -105,15 +107,17 @@ python -m venv .venv
 .venv\Scripts\activate
 ```
 
-### 4. Install PyTorch with CUDA
+### 4. Install PyTorch for the selected device
 
-Install the CUDA-enabled PyTorch build appropriate for your system. For the environment currently documented by the project:
+For the maintainer-validated NVIDIA/CUDA reference environment, install the CUDA-enabled PyTorch build appropriate for your system. The environment currently documented by the project uses:
 
 ```bash
 python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
 ```
 
-If you use another CUDA/PyTorch combination, follow the corresponding official PyTorch installation instructions and verify that `torch.cuda.is_available()` returns `True`.
+For a CPU-only experiment, install a CPU-compatible PyTorch build using the official PyTorch installation selector. The CPU path is exposed in BlurGPT settings and existed in earlier project iterations, but it is not part of the current performance reference and has not been revalidated against the current packaged Windows build.
+
+If you use another CUDA/PyTorch combination, follow the corresponding official PyTorch installation instructions and verify that `torch.cuda.is_available()` returns `True` when selecting a CUDA device.
 
 ### 5. Install BlurGPT dependencies
 
@@ -209,7 +213,7 @@ Important settings include:
 | Setting | Default | Purpose |
 |---|---:|---|
 | `MODEL_PATH` | `models/blurGPT.pt` | YOLO model used for detection |
-| `DEVICE` | `0` | First CUDA GPU |
+| `DEVICE` | `0` | First CUDA GPU; CPU can be selected explicitly in the GUI |
 | `DETECT_EVERY` | `5` | Run YOLO once every N frames |
 | `IMGSZ` | `640` | YOLO inference image size |
 | `PIXEL_SIZE` | `10` | Pixelation block size |
@@ -220,6 +224,16 @@ Important settings include:
 | `VIDEO_NVENC_PRESET` | `p4` | NVENC performance/quality preset |
 
 `DETECT_EVERY = 5` means YOLO is not executed on every frame. Between detector calls, `MotionPredictor` estimates object position and size from the previous detections.
+
+---
+
+## Hardware compatibility
+
+The current reference configuration is NVIDIA CUDA inference with FFmpeg NVENC encoding. CPU can be selected explicitly, but it is not an automatic fallback and has not been revalidated against the current packaged Windows build. AMD/ROCm, Intel/XPU, and newer NVIDIA platforms require separate compatibility validation; no universal GPU support is claimed.
+
+Inference hardware and video encoding are independent. A CPU-only system should select CPU inference and OpenCV `mp4v`; an NVIDIA GPU does not guarantee that its driver/FFmpeg combination can initialize NVENC.
+
+See [`docs/hardware-backends.md`](docs/hardware-backends.md) for the source-level inventory and current validation status, and [`docs/compatibility.md`](docs/compatibility.md) for voluntary community testing instructions.
 
 ---
 
@@ -304,6 +318,7 @@ BlurGPT/
 │   ├── architecture.md
 │   ├── gui.md
 │   ├── compatibility.md
+│   ├── hardware-backends.md
 │   ├── performance.md
 │   └── roadmap.md
 │
@@ -333,6 +348,7 @@ BlurGPT/
 - [`docs/architecture.md`](docs/architecture.md) — runtime architecture and responsibilities of each module
 - [`docs/gui.md`](docs/gui.md) — desktop GUI guide and development principles
 - [`docs/compatibility.md`](docs/compatibility.md) — volunteer hardware testing and compatibility reports
+- [`docs/hardware-backends.md`](docs/hardware-backends.md) — source-level hardware backend inventory and validation status
 - [`docs/performance.md`](docs/performance.md) — performance benchmarks and optimization decisions
 - [`docs/roadmap.md`](docs/roadmap.md) — current development priorities and future work
 - [`CHANGELOG.md`](CHANGELOG.md) — version history
@@ -366,6 +382,7 @@ BlurGPT/
 - Model packaging improvements (Git LFS / release assets)
 - First-run diagnostics and packaged Windows distribution
 - Additional anonymization methods
+- Backend portability and independent validation (see issue #61)
 
 ---
 
@@ -377,7 +394,7 @@ BlurGPT/
 - **FFmpeg** — hardware video encoding
 - **Ultralytics YOLO** — object detection
 - **PyTorch** — deep-learning inference
-- **CUDA / NVENC** — GPU acceleration and video encoding
+- **CUDA / NVENC** — current reference GPU inference and video encoding path
 
 ## License
 

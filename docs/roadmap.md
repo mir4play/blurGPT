@@ -21,17 +21,17 @@ Expand runtime compatibility beyond the current NVIDIA/CUDA-first path without d
 
 The compatibility strategy is deliberately incremental:
 
-- preserve the current NVIDIA/CUDA path as the reference implementation
-- support CPU-only inference as an explicit, diagnosable fallback where the existing inference stack permits it
-- evaluate AMD GPU acceleration (initially ROCm on supported platforms)
-- evaluate Intel GPU acceleration (the appropriate PyTorch XPU/oneAPI path)
+- preserve the current NVIDIA/CUDA + NVENC path as the performance reference implementation
+- document the existing explicit CPU device route accurately; do not describe it as an automatic fallback or validated support until its runtime behavior is independently checked
+- keep CPU inference and video encoding separate; CPU-only attempts need an available software encoder such as the existing OpenCV `mp4v` path
+- evaluate AMD GPU acceleration (initially ROCm on supported platforms) in an isolated environment
+- evaluate Intel GPU acceleration (the appropriate PyTorch XPU/oneAPI path) separately
 - verify newer NVIDIA platforms, including NVIDIA DGX Spark, through the supported PyTorch/CUDA stack rather than adding a separate special case
-- keep inference backend capability separate from video encoding capability; NVIDIA hardware does not automatically imply NVENC availability
 - keep backend-specific dependencies isolated so the existing Windows build does not inherit unnecessary packages
 - use separate build/package targets when a single universal executable would introduce unsafe or excessive dependencies
-- provide a structured, voluntary community report form and short benchmark guidance through [issue #63](https://github.com/mir4play/BlurGPT/issues/63), without adding telemetry or requiring the maintainer to test every alternative configuration
+- use the structured volunteer report form and short benchmark guidance in [`docs/compatibility.md`](compatibility.md), without adding telemetry or requiring the maintainer to test every alternative configuration
 
-No claim of universal GPU support should be made without backend-specific runtime validation and documented benchmark conditions.
+The current source-level device/encoder inventory and validation status are in [`docs/hardware-backends.md`](hardware-backends.md). No claim of universal GPU support should be made without backend-specific runtime validation and documented benchmark conditions.
 
 ### 3. Model development
 

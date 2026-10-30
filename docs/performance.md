@@ -6,6 +6,28 @@ This document records BlurGPT performance measurements and the decisions made fr
 
 Performance results depend on hardware, driver, software versions, input video and concurrent GPU workloads. Results are therefore reported with their test conditions rather than treated as universal figures.
 
+## Backend compatibility snapshot
+
+The following is a **source-level inventory**, not a benchmark or runtime certification. The NVIDIA/CUDA + NVENC configuration remains the reference path.
+
+| Inference configuration | Current code status | Validation status |
+|---|---|---|
+| NVIDIA CUDA | Default device index and existing PyTorch/Ultralytics path | Maintainer benchmarked on RTX 4060 Laptop |
+| CPU | Explicit `"cpu"` setting reaches `YOLO.predict(device="cpu")`; preflight skips CUDA checks for this selection | CPU was used in earlier project iterations; it has not been revalidated against the current packaged Windows build and is likely much slower |
+| AMD / ROCm | No explicit ROCm capability selection or HIP reporting | Not validated; no support claim |
+| Intel / XPU | No explicit `torch.xpu` detection or device selection | Not implemented/validated |
+| New NVIDIA platforms (e.g. DGX Spark) | No special-case code; depends on compatible PyTorch/CUDA packages and platform support | Not validated on those platforms |
+
+Encoding is independent of inference:
+
+- `h264_nvenc` uses FFmpeg's NVIDIA encoder and requires a compatible driver and FFmpeg build.
+- `opencv` / `mp4v` is the existing software/compatibility path.
+- No AMF, QSV, or VAAPI encoder path is currently implemented.
+
+The CPU option is explicit, not an automatic fallback. A CPU-only configuration must select CPU inference **and** OpenCV/`mp4v` encoding; leaving NVENC selected still triggers NVENC preflight. Source-level availability is not proof of successful runtime processing.
+
+For the exact source assumptions and safe development sequence, see [`hardware-backends.md`](hardware-backends.md). For volunteer testing instructions, see [`compatibility.md`](compatibility.md).
+
 ## Motion-prediction benchmark
 
 Original benchmark workload:
