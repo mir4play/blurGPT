@@ -68,7 +68,7 @@ On failure, the input is moved to `input_error/` and a line is appended to `logs
 - An NVIDIA GPU with a compatible CUDA-enabled PyTorch build for the **maintainer-validated reference path**
 - **FFmpeg with `h264_nvenc` support** when using the recommended NVIDIA hardware encoder
 
-The default inference device is CUDA device 0. If that selected GPU is unavailable, preflight reports an error; BlurGPT does **not** silently switch to CPU. The GUI exposes an explicit CPU option, the CPU path predates the current NVIDIA-optimized reference, but it has not been revalidated against the current packaged Windows build. It may be substantially slower.
+The default inference device is CUDA device 0. If that selected GPU is unavailable, preflight reports an error; BlurGPT does **not** silently switch to CPU. The GUI exposes an explicit CPU option. This path predates the current NVIDIA-optimized reference, has not been revalidated against the current packaged Windows build, and may be substantially slower.
 
 For a CPU-only attempt, select **CPU** as the inference device and **OpenCV / mp4v** as the video encoder. The default NVENC encoder still requires a compatible NVIDIA driver and FFmpeg build. See [hardware backend status](docs/hardware-backends.md) before treating any alternative configuration as supported.
 
