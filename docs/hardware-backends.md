@@ -34,7 +34,7 @@ Inference and encoding are separate capabilities. Selecting CPU inference does n
 | Configuration | Source-level status | Validation status |
 |---|---|---|
 | NVIDIA CUDA + FFmpeg NVENC | Existing default/reference path | Maintainer benchmarked on RTX 4060 Laptop; preserve as-is |
-| CPU inference + OpenCV `mp4v` | Explicit CPU device route and software encoder exist | Not independently validated as a supported runtime configuration; likely substantially slower |
+| CPU inference + OpenCV `mp4v` | Explicit CPU device route and software encoder exist | CPU was used in earlier project iterations; current-main/frozen-build validation evidence is not recorded, and it is likely substantially slower |
 | AMD GPU / ROCm | No explicit ROCm selection or capability reporting | Not validated; do not claim support |
 | Intel GPU / XPU | No explicit `torch.xpu` path in settings or preflight | Not implemented/validated |
 | New NVIDIA platforms (including DGX Spark) | No platform-specific branch; would use the NVIDIA/PyTorch stack if compatible | Not validated on those platforms |
