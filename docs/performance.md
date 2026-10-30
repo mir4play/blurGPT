@@ -13,7 +13,7 @@ The following is a **source-level inventory**, not a benchmark or runtime certif
 | Inference configuration | Current code status | Validation status |
 |---|---|---|
 | NVIDIA CUDA | Default device index and existing PyTorch/Ultralytics path | Maintainer benchmarked on RTX 4060 Laptop |
-| CPU | Explicit `"cpu"` setting reaches `YOLO.predict(device="cpu")`; preflight skips CUDA checks for this selection | Not independently runtime-validated by maintainers; likely much slower |
+| CPU | Explicit `"cpu"` setting reaches `YOLO.predict(device="cpu")`; preflight skips CUDA checks for this selection | CPU was used in earlier project iterations; it has not been revalidated against the current packaged Windows build and is likely much slower |
 | AMD / ROCm | No explicit ROCm capability selection or HIP reporting | Not validated; no support claim |
 | Intel / XPU | No explicit `torch.xpu` detection or device selection | Not implemented/validated |
 | New NVIDIA platforms (e.g. DGX Spark) | No special-case code; depends on compatible PyTorch/CUDA packages and platform support | Not validated on those platforms |
