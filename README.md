@@ -68,7 +68,7 @@ On failure, the input is moved to `input_error/` and a line is appended to `logs
 - An NVIDIA GPU with a compatible CUDA-enabled PyTorch build for the **maintainer-validated reference path**
 - **FFmpeg with `h264_nvenc` support** when using the recommended NVIDIA hardware encoder
 
-The default inference device is CUDA device 0. If that selected GPU is unavailable, preflight reports an error; BlurGPT does **not** silently switch to CPU. The GUI exposes an explicit CPU option, but that source-level path has not yet been independently runtime-validated by the maintainers. It may be substantially slower.
+The default inference device is CUDA device 0. If that selected GPU is unavailable, preflight reports an error; BlurGPT does **not** silently switch to CPU. The GUI exposes an explicit CPU option, the CPU path predates the current NVIDIA-optimized reference, but it has not been revalidated against the current packaged Windows build. It may be substantially slower.
 
 For a CPU-only attempt, select **CPU** as the inference device and **OpenCV / mp4v** as the video encoder. The default NVENC encoder still requires a compatible NVIDIA driver and FFmpeg build. See [hardware backend status](docs/hardware-backends.md) before treating any alternative configuration as supported.
 
@@ -115,7 +115,7 @@ For the maintainer-validated NVIDIA/CUDA reference environment, install the CUDA
 python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
 ```
 
-For a CPU-only experiment, install a CPU-compatible PyTorch build using the official PyTorch installation selector. The CPU path is exposed in BlurGPT settings but is not yet a maintainer-validated support target.
+For a CPU-only experiment, install a CPU-compatible PyTorch build using the official PyTorch installation selector. The CPU path is exposed in BlurGPT settings and existed in earlier project iterations, but it is not part of the current performance reference and has not been revalidated against the current packaged Windows build.
 
 If you use another CUDA/PyTorch combination, follow the corresponding official PyTorch installation instructions and verify that `torch.cuda.is_available()` returns `True` when selecting a CUDA device.
 
@@ -229,7 +229,7 @@ Important settings include:
 
 ## Hardware compatibility
 
-The current reference configuration is NVIDIA CUDA inference with FFmpeg NVENC encoding. CPU can be selected explicitly, but it is not an automatic fallback and has not yet been independently runtime-validated by the maintainers. AMD/ROCm, Intel/XPU, and newer NVIDIA platforms require separate compatibility validation; no universal GPU support is claimed.
+The current reference configuration is NVIDIA CUDA inference with FFmpeg NVENC encoding. CPU can be selected explicitly, but it is not an automatic fallback and has not been revalidated against the current packaged Windows build. AMD/ROCm, Intel/XPU, and newer NVIDIA platforms require separate compatibility validation; no universal GPU support is claimed.
 
 Inference hardware and video encoding are independent. A CPU-only system should select CPU inference and OpenCV `mp4v`; an NVIDIA GPU does not guarantee that its driver/FFmpeg combination can initialize NVENC.
 
