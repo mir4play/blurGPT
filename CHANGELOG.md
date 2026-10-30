@@ -6,9 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now on `main` (HEAD `13e69452`).
+GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now on `main` (HEAD `3f92696`).
 
-Recent: frozen console suppress (#64), models/ directory init on GUI startup (#65), community hardware compatibility feedback docs (#66), hardware backend inventory (#67).
+Recent: frozen console suppress (#64), models/ directory init on GUI startup (#65), community hardware compatibility feedback docs (#66), hardware backend inventory (#67), Unreleased note refresh (#68).
 
 No version bump or tag yet. Packaging ready for local Windows frozen build via `blurGPT.spec`. Awaiting user confirmation of frozen smoke-test (no console window during processing, models/ created, origin-aware Remove, cancel/messaging) and release-gate review per #29 before considering 0.6.0.
 
