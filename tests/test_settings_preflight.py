@@ -4,6 +4,7 @@ import pytest
 
 import core.preflight as preflight_module
 import core.settings as settings_module
+from core.backends import BackendCapabilities
 
 
 def test_validate_settings_normalizes_and_rejects_invalid_values():
@@ -78,3 +79,52 @@ def test_preflight_reports_unavailable_cuda_device(tmp_path, monkeypatch):
     errors = preflight_module.validate_processing_environment()
 
     assert any("CUDA device 2 is not available" in error for error in errors)
+
+
+def test_preflight_accepts_rocm_device_index(tmp_path, monkeypatch):
+    model = tmp_path / "model.pt"
+    model.write_bytes(b"model")
+    values = settings_module.DEFAULTS.copy()
+    values.update({"model_path": str(model), "device": 0, "video_encoder": "opencv"})
+    capabilities = BackendCapabilities(
+        pytorch_available=True,
+        cpu_available=True,
+        cuda_available=False,
+        rocm_available=True,
+        xpu_available=False,
+        cuda_api_device_count=1,
+        xpu_device_count=0,
+        rocm_runtime_version="6.3",
+    )
+
+    monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
+    monkeypatch.setattr(
+        preflight_module, "inspect_backend_capabilities", lambda: capabilities
+    )
+
+    assert preflight_module.validate_processing_environment() == []
+
+
+def test_preflight_does_not_treat_xpu_as_a_selectable_cuda_device(tmp_path, monkeypatch):
+    model = tmp_path / "model.pt"
+    model.write_bytes(b"model")
+    values = settings_module.DEFAULTS.copy()
+    values.update({"model_path": str(model), "device": 0, "video_encoder": "opencv"})
+    capabilities = BackendCapabilities(
+        pytorch_available=True,
+        cpu_available=True,
+        cuda_available=False,
+        rocm_available=False,
+        xpu_available=True,
+        cuda_api_device_count=0,
+        xpu_device_count=1,
+    )
+
+    monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
+    monkeypatch.setattr(
+        preflight_module, "inspect_backend_capabilities", lambda: capabilities
+    )
+
+    errors = preflight_module.validate_processing_environment()
+
+    assert any("Intel XPU" in error and "does not yet expose" in error for error in errors)
