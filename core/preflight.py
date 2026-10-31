@@ -3,6 +3,7 @@
 from pathlib import Path
 import subprocess
 
+from core.backends import inspect_backend_capabilities
 from core.paths import DEFAULT_MODEL_PATH, ROOT_DIR, resolve_ffmpeg
 from core.settings import load_settings, validate_settings
 
@@ -61,27 +62,43 @@ def validate_processing_environment(settings=None):
     if device == "cpu":
         return errors
 
-    # Lazy import so unit tests and CPU-only paths do not require torch.
-    try:
-        import torch
-    except ImportError:
+    capabilities = inspect_backend_capabilities()
+    if not capabilities.pytorch_available:
+        detail = (
+            f"\nPyTorch import details: {capabilities.torch_import_error}"
+            if capabilities.torch_import_error else ""
+        )
         errors.append(
-            "PyTorch is not installed, but the selected processing device is GPU.\n"
-            "Choose CPU in Settings or install a CUDA-enabled PyTorch environment."
+            "PyTorch could not be loaded, but the selected processing device is GPU.\n"
+            "Choose CPU in Settings or install a compatible PyTorch build."
+            f"{detail}"
         )
         return errors
 
-    if not torch.cuda.is_available():
-        errors.append(
-            "CUDA is not available, but the selected processing device is GPU.\n"
-            "Choose CPU in Settings or install a CUDA-enabled PyTorch environment."
-        )
+    if not capabilities.cuda_api_available:
+        if capabilities.xpu_available:
+            errors.append(
+                "Intel XPU is available in PyTorch, but BlurGPT does not yet expose "
+                "XPU device selection.\n"
+                "Choose CPU or use a supported CUDA/ROCm environment."
+            )
+        else:
+            detail = (
+                f"\nBackend probe details: {capabilities.cuda_probe_error}"
+                if capabilities.cuda_probe_error else ""
+            )
+            errors.append(
+                "CUDA/ROCm is not available, but the selected processing device is GPU.\n"
+                "Choose CPU in Settings or install a compatible CUDA/ROCm PyTorch environment."
+                f"{detail}"
+            )
         return errors
 
-    if device >= torch.cuda.device_count():
+    if device >= capabilities.cuda_api_device_count:
+        backend_name = capabilities.cuda_api_backend_name
         errors.append(
-            f"CUDA device {device} is not available. "
-            f"This system exposes {torch.cuda.device_count()} GPU device(s)."
+            f"{backend_name} device {device} is not available. "
+            f"This system exposes {capabilities.cuda_api_device_count} GPU device(s)."
         )
 
     return errors
