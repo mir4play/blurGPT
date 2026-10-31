@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now integrated on `main`.
 
-Recent: frozen console suppress (#64), models/ directory init on GUI startup (#65), community hardware compatibility feedback docs (#66), hardware backend inventory (#67), Unreleased note refresh (#68), non-mutating PyTorch backend capability detection.
+Recent: frozen console suppress (#64), models/ directory init on GUI startup (#65), community hardware compatibility feedback docs (#66), hardware backend inventory (#67), Unreleased note refresh (#68), non-mutating PyTorch backend capability detection (#70, merged 2026-10-31; main @ c7ba372).
 
 No version bump or tag yet. Packaging ready for local Windows frozen build via `blurGPT.spec`. Awaiting user confirmation of frozen smoke-test (no console window during processing, models/ created, origin-aware Remove, cancel/messaging) and release-gate review per #29 before considering 0.6.0.
 
