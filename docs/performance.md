@@ -12,10 +12,10 @@ The following is a **source-level inventory**, not a benchmark or runtime certif
 
 | Inference configuration | Current code status | Validation status |
 |---|---|---|
-| NVIDIA CUDA | Default device index and existing PyTorch/Ultralytics path | Maintainer benchmarked on RTX 4060 Laptop |
-| CPU | Explicit `"cpu"` setting reaches `YOLO.predict(device="cpu")`; preflight skips CUDA checks for this selection | CPU was used in earlier project iterations; it has not been revalidated against the current packaged Windows build and is likely much slower |
-| AMD / ROCm | No explicit ROCm capability selection or HIP reporting | Not validated; no support claim |
-| Intel / XPU | No explicit `torch.xpu` detection or device selection | Not implemented/validated |
+| NVIDIA CUDA | Default device index and existing PyTorch/Ultralytics path; capability probe identifies CUDA separately from ROCm/HIP | Maintainer benchmarked on RTX 4060 Laptop |
+| CPU | Explicit `"cpu"` setting reaches `YOLO.predict(device="cpu")`; preflight skips accelerator checks for this selection | CPU was used in earlier project iterations; it has not been revalidated against the current packaged Windows build and is likely much slower |
+| AMD / ROCm | Capability probe identifies a PyTorch HIP runtime when its CUDA-compatible API exposes a device; existing integer device path is unchanged | Not runtime-validated; no support claim |
+| Intel / XPU | Capability probe reports `torch.xpu` availability when exposed; current settings do not provide XPU device selection | Not implemented/validated for inference |
 | New NVIDIA platforms (e.g. DGX Spark) | No special-case code; depends on compatible PyTorch/CUDA packages and platform support | Not validated on those platforms |
 
 Encoding is independent of inference:
@@ -24,7 +24,7 @@ Encoding is independent of inference:
 - `opencv` / `mp4v` is the existing software/compatibility path.
 - No AMF, QSV, or VAAPI encoder path is currently implemented.
 
-The CPU option is explicit, not an automatic fallback. A CPU-only configuration must select CPU inference **and** OpenCV/`mp4v` encoding; leaving NVENC selected still triggers NVENC preflight. Source-level availability is not proof of successful runtime processing.
+The capability probe is informational. It does not select devices, install dependencies, or add automatic fallback. The CPU option is explicit, not an automatic fallback. A CPU-only configuration must select CPU inference **and** OpenCV/`mp4v` encoding; leaving NVENC selected still triggers NVENC preflight. Source-level availability is not proof of successful runtime processing.
 
 For the exact source assumptions and safe development sequence, see [`hardware-backends.md`](hardware-backends.md). For volunteer testing instructions, see [`compatibility.md`](compatibility.md).
 
