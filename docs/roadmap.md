@@ -31,6 +31,8 @@ The compatibility strategy is deliberately incremental:
 - use separate build/package targets when a single universal executable would introduce unsafe or excessive dependencies
 - use the structured volunteer report form and short benchmark guidance in [`docs/compatibility.md`](compatibility.md), without adding telemetry or requiring the maintainer to test every alternative configuration
 
+A non-mutating capability probe now distinguishes CPU availability, NVIDIA CUDA, ROCm/HIP, and Intel XPU when exposed by the installed PyTorch build. It reports availability only: the current CUDA device-index selector, encoder selection, and NVIDIA defaults remain unchanged. XPU is not selectable yet, and no alternative backend is runtime-certified.
+
 The current source-level device/encoder inventory and validation status are in [`docs/hardware-backends.md`](hardware-backends.md). No claim of universal GPU support should be made without backend-specific runtime validation and documented benchmark conditions.
 
 ### 3. Model development
