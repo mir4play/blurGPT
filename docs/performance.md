@@ -129,6 +129,8 @@ logs/benchmarks.jsonl
 
 Records include the processing metrics, configuration and execution environment. A `run_id` groups all videos processed during the same application run. Logging failures are treated as warnings and must not invalidate an otherwise completed video-processing job.
 
+The environment snapshot now includes the CPU identifier, selected inference backend, PyTorch version, CUDA and ROCm/HIP runtime versions, available CUDA-compatible GPU name, and Intel XPU availability/name when exposed by the installed PyTorch build. The legacy `gpu` and `cuda_device` keys are retained for existing log readers; `gpu_backend` distinguishes CUDA from ROCm, and `selected_inference_backend` reports CPU, CUDA, ROCm, or `unavailable` without selecting a device. Device-name lookups are best-effort and record diagnostic errors instead of interrupting processing. XPU metadata is informational only because XPU inference selection is not implemented. Collection is local and no telemetry is sent.
+
 The benchmark history is intended to make future performance comparisons reproducible. Official conclusions should still be documented here rather than relying only on raw runtime logs.
 
 ## What the benchmark does not measure
@@ -137,8 +139,8 @@ The current benchmark does not establish universal real-time capability and does
 
 For reproducible comparisons, record at least:
 
-- GPU model and driver
-- CPU model
+- CPU model (captured in the local environment snapshot)
+- GPU model/backend and driver
 - Python, PyTorch and Ultralytics versions
 - FFmpeg version
 - input resolution and FPS
