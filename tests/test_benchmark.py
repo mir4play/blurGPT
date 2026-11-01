@@ -39,6 +39,7 @@ def _patch_environment(monkeypatch, torch_module, cpu_name="Test CPU"):
     monkeypatch.setattr(benchmark, "import_module", lambda name: torch_module)
     monkeypatch.setattr(benchmark.platform, "processor", lambda: cpu_name)
     monkeypatch.setattr(benchmark.platform, "platform", lambda: "Test OS")
+    monkeypatch.setattr(benchmark, "_ffmpeg_version", lambda: "FFmpeg test")
 
 
 def test_collect_environment_reports_cpu_and_cuda_metadata(monkeypatch):
@@ -53,6 +54,7 @@ def test_collect_environment_reports_cpu_and_cuda_metadata(monkeypatch):
     environment = benchmark.collect_environment(device=1)
 
     assert environment["cpu"] == "Intel Test CPU"
+    assert environment["ffmpeg"] == "FFmpeg test"
     assert environment["pytorch"] == "2.8.0"
     assert environment["cuda"] == "12.8"
     assert environment["rocm"] is None
@@ -145,10 +147,15 @@ def test_collect_environment_handles_missing_pytorch(monkeypatch):
     monkeypatch.setattr(benchmark, "import_module", fail_import)
     monkeypatch.setattr(benchmark.platform, "processor", lambda: "Test CPU")
     monkeypatch.setattr(benchmark.platform, "platform", lambda: "Test OS")
+    monkeypatch.setattr(benchmark, "_ffmpeg_version", lambda: "FFmpeg test")
 
     environment = benchmark.collect_environment(device=0)
 
     assert environment["cpu"] == "Test CPU"
     assert environment["pytorch"] is None
     assert environment["selected_inference_backend"] == "unavailable"
+    assert environment["ffmpeg"] == "FFmpeg test"
     assert "ModuleNotFoundError" in environment["torch_import_error"]
+
+    cpu_environment = benchmark.collect_environment(device="cpu")
+    assert cpu_environment["selected_inference_backend"] == "unavailable"
