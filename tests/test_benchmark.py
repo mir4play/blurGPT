@@ -128,9 +128,10 @@ def test_collect_environment_does_not_fail_when_device_name_probe_errors(monkeyp
         cuda_count=1,
         cuda_version="12.8",
     )
-    torch_module.cuda.get_device_name = lambda _index: (_ for _ in ()).throw(
-        RuntimeError("driver query failed")
-    )
+    def fail_device_name(_index):
+        raise RuntimeError("driver query failed")
+
+    torch_module.cuda.get_device_name = fail_device_name
     _patch_environment(monkeypatch, torch_module)
 
     environment = benchmark.collect_environment(device=0)
@@ -159,3 +160,16 @@ def test_collect_environment_handles_missing_pytorch(monkeypatch):
 
     cpu_environment = benchmark.collect_environment(device="cpu")
     assert cpu_environment["selected_inference_backend"] == "unavailable"
+
+
+
+def test_collect_environment_reports_explicit_cpu_only_runtime(monkeypatch):
+    torch_module = _torch_module()
+    _patch_environment(monkeypatch, torch_module)
+
+    environment = benchmark.collect_environment(device="cpu")
+
+    assert environment["selected_inference_backend"] == "CPU"
+    assert environment["gpu_backend"] is None
+    assert environment["gpu"] is None
+    assert environment["xpu_available"] is False
