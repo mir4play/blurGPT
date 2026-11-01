@@ -104,7 +104,11 @@ def collect_environment(device=0):
 
     if capabilities.cuda_api_available:
         device_count = capabilities.cuda_api_device_count
-        if isinstance(device, int) and not isinstance(device, bool) and 0 <= device < device_count:
+        if (
+            isinstance(device, int)
+            and not isinstance(device, bool)
+            and 0 <= device < device_count
+        ):
             cuda_device = device
         else:
             cuda_device = 0
