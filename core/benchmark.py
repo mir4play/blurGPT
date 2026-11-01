@@ -3,9 +3,9 @@ import platform
 import subprocess
 import sys
 from datetime import datetime, timezone
+from importlib import import_module
 
-import torch
-
+from core.backends import inspect_backend_capabilities
 from core.paths import LOGS_DIR, resolve_ffmpeg
 
 
@@ -38,26 +38,124 @@ def _ffmpeg_version():
         return "not available"
 
 
+def _cpu_name():
+    """Return a best-effort CPU identifier without adding a system dependency."""
+    try:
+        processor = str(platform.processor() or "").strip()
+    except (OSError, RuntimeError):
+        processor = ""
+    if processor:
+        return processor
+
+    try:
+        processor = str(platform.uname().processor or "").strip()
+    except (AttributeError, OSError, RuntimeError):
+        processor = ""
+    return processor or platform.machine() or "unknown"
+
+
+def _device_name(api, index):
+    """Return a device name and optional diagnostic without breaking a job."""
+    get_device_name = getattr(api, "get_device_name", None)
+    if not callable(get_device_name):
+        return None, None
+    try:
+        name = get_device_name(index)
+        return (str(name) if name else None), None
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+
+
 def collect_environment(device=0):
-    """Collect the runtime environment used by the processing session."""
+    """Collect local runtime and backend metadata for the processing session.
+
+    Device-name queries are best-effort: a diagnostic failure must not prevent
+    video processing or invalidate an otherwise successful benchmark record.
+    """
+    try:
+        torch_module = import_module("torch")
+    except Exception as exc:
+        return {
+            "python": platform.python_version(),
+            "platform": platform.platform(),
+            "ffmpeg": _ffmpeg_version(),
+            "cpu": _cpu_name(),
+            "pytorch": None,
+            "cuda": None,
+            "rocm": None,
+            "gpu": None,
+            "cuda_device": None,
+            "gpu_backend": None,
+            "selected_inference_backend": "unavailable",
+            "xpu_available": False,
+            "xpu_gpu": None,
+            "xpu_device": None,
+            "cuda_probe_error": None,
+            "gpu_name_error": None,
+            "xpu_probe_error": None,
+            "xpu_name_error": None,
+            "torch_import_error": f"{type(exc).__name__}: {exc}",
+        }
+
+    capabilities = inspect_backend_capabilities(torch_module)
     gpu = None
     cuda_device = None
+    gpu_name_error = None
 
-    if torch.cuda.is_available():
-        if isinstance(device, int) and 0 <= device < torch.cuda.device_count():
+    if capabilities.cuda_api_available:
+        device_count = capabilities.cuda_api_device_count
+        if (
+            isinstance(device, int)
+            and not isinstance(device, bool)
+            and 0 <= device < device_count
+        ):
             cuda_device = device
         else:
             cuda_device = 0
-        gpu = torch.cuda.get_device_name(cuda_device)
+        gpu, gpu_name_error = _device_name(
+            getattr(torch_module, "cuda", None),
+            cuda_device,
+        )
+
+    xpu_gpu = None
+    xpu_device = None
+    xpu_name_error = None
+    if capabilities.xpu_available:
+        xpu_device = 0
+        xpu_gpu, xpu_name_error = _device_name(
+            getattr(torch_module, "xpu", None),
+            xpu_device,
+        )
+
+    if device == "cpu":
+        selected_backend = "CPU"
+    elif capabilities.cuda_api_available:
+        selected_backend = capabilities.cuda_api_backend_name
+    else:
+        selected_backend = "unavailable"
 
     return {
         "python": platform.python_version(),
         "platform": platform.platform(),
-        "pytorch": torch.__version__,
-        "cuda": torch.version.cuda,
+        "ffmpeg": _ffmpeg_version(),
+        "cpu": _cpu_name(),
+        "pytorch": capabilities.pytorch_version,
+        "cuda": capabilities.cuda_runtime_version,
+        "rocm": capabilities.rocm_runtime_version,
+        "gpu_backend": (
+            capabilities.cuda_api_backend_name
+            if capabilities.cuda_api_available else None
+        ),
         "gpu": gpu,
         "cuda_device": cuda_device,
-        "ffmpeg": _ffmpeg_version(),
+        "selected_inference_backend": selected_backend,
+        "xpu_available": capabilities.xpu_available,
+        "xpu_gpu": xpu_gpu,
+        "xpu_device": xpu_device,
+        "cuda_probe_error": capabilities.cuda_probe_error,
+        "gpu_name_error": gpu_name_error,
+        "xpu_probe_error": capabilities.xpu_probe_error,
+        "xpu_name_error": xpu_name_error,
     }
 
 

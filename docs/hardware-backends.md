@@ -1,6 +1,6 @@
 # Hardware backend inventory
 
-**Source audit date:** 2026-10-31  
+**Source audit date:** 2026-11-01  
 **Scope:** source-level inspection of the current `main` implementation. No alternative-hardware runtime tests were performed for this inventory.
 
 This document records what the current code actually selects and validates. It is not a promise that every listed device or backend is supported.
@@ -24,7 +24,7 @@ This is the path represented by the existing benchmark history and the maintaine
 | Capability probe | `core/backends.py` reports PyTorch CPU availability, distinguishes NVIDIA CUDA from ROCm/HIP, and probes `torch.xpu` when exposed. | Detection is informational only: it does not select devices, install dependencies, or validate inference. |
 | Preflight | `core/preflight.py` uses the capability probe for GPU device checks. It accepts the existing integer device index through PyTorch's CUDA-compatible API and identifies ROCm when the HIP runtime is exposed. | XPU can be detected but cannot yet be selected. The CPU path still requires explicit selection. |
 | Inference | `core/detector.py` passes the configured device directly to `YOLO.predict(device=...)`. | The CPU route is wired at source level, but there is no backend-specific inference selection or backend runtime validation. |
-| Benchmark environment | `core/benchmark.py` records PyTorch, `torch.version.cuda`, and a GPU name through `torch.cuda`. | It does not explicitly report HIP/ROCm or XPU, and does not identify the CPU model. Community reports should supply those details manually. |
+| Benchmark environment | `core/benchmark.py` records the CPU identifier, selected inference backend, PyTorch version, CUDA/ROCm runtime versions, CUDA-compatible GPU name, and XPU availability/name when exposed. | Device-name queries are best-effort. XPU is reported for diagnostics but is not selectable for inference. |
 | NVENC encoding | `core/video.py` invokes FFmpeg with `h264_nvenc`; preflight checks whether the selected FFmpeg lists that encoder. | Listing the encoder does not guarantee that the installed driver can successfully initialize it at runtime. |
 | OpenCV encoding | `core/video.py` supports the `mp4v` OpenCV writer. | This is the current software/compatibility encoder path; no AMF, QSV, or VAAPI path is implemented here. |
 
@@ -44,7 +44,7 @@ A CPU option in the settings is not the same as an automatic fallback. BlurGPT d
 
 ## Safe next steps
 
-1. Improve local benchmark environment reporting so CPU, CUDA, ROCm/HIP, and XPU information is distinguishable where the installed PyTorch build exposes it. Keep collection local and do not add telemetry.
+1. Use the expanded local benchmark metadata when reviewing volunteer reports. Logs remain local; contributors should copy only relevant fields and redact private paths or filenames.
 2. Invite volunteers to test CPU and alternative backends with the short procedure in [community compatibility guidance](compatibility.md). A short successful run is enough for an initial compatibility signal; long performance comparisons are optional.
 3. Evaluate AMD/ROCm and Intel/XPU in separate dependency environments and, if needed, separate packaging targets. Do not add their packages to the current NVIDIA Windows build by default.
 4. Consider a backend validated only after a reproducible runtime report identifies the hardware, OS, driver, PyTorch/Ultralytics versions, workload, and actual encoder.

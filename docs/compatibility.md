@@ -25,7 +25,7 @@ Volunteers do not need to run long videos or benchmark every profile. A short, r
 5. Check that processing finishes, the output video opens, and faces/license plates in the output are pixelated adequately. Do not upload the source or output video to the issue.
 6. If convenient, record processing FPS or elapsed time. Performance is workload-dependent; one number is not a universal comparison.
 
-The current benchmark log is written to `logs/benchmarks.jsonl` after a successful job. It can provide fields such as `processing_fps`, `total_time_s`, `frames`, `resolution`, `encoder`, settings, and runtime versions. **Review the record before sharing anything:** it can include the input filename, model path, platform details, and other environment information. Copy only the relevant fields into the report and redact private information; do not attach the raw log by default.
+The current benchmark log is written to `logs/benchmarks.jsonl` after a successful job. It can provide `processing_fps`, `total_time_s`, `frames`, `resolution`, `encoder`, settings, CPU identification, the selected inference backend, PyTorch/CUDA/ROCm versions, GPU name, and XPU availability/name when exposed by PyTorch. This metadata is collected locally; no telemetry is sent. **Review the record before sharing anything:** it can include the input filename, model path, platform details, device names, and other environment information. Copy only the relevant fields into the report and redact private information; do not attach the raw log by default.
 
 ## Submit a report
 
