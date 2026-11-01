@@ -78,6 +78,7 @@ def collect_environment(device=0):
         return {
             "python": platform.python_version(),
             "platform": platform.platform(),
+            "ffmpeg": _ffmpeg_version(),
             "cpu": _cpu_name(),
             "pytorch": None,
             "cuda": None,
@@ -85,10 +86,14 @@ def collect_environment(device=0):
             "gpu": None,
             "cuda_device": None,
             "gpu_backend": None,
-            "selected_inference_backend": "CPU" if device == "cpu" else "unavailable",
+            "selected_inference_backend": "unavailable",
             "xpu_available": False,
             "xpu_gpu": None,
             "xpu_device": None,
+            "cuda_probe_error": None,
+            "gpu_name_error": None,
+            "xpu_probe_error": None,
+            "xpu_name_error": None,
             "torch_import_error": f"{type(exc).__name__}: {exc}",
         }
 
@@ -128,6 +133,7 @@ def collect_environment(device=0):
     return {
         "python": platform.python_version(),
         "platform": platform.platform(),
+        "ffmpeg": _ffmpeg_version(),
         "cpu": _cpu_name(),
         "pytorch": capabilities.pytorch_version,
         "cuda": capabilities.cuda_runtime_version,
