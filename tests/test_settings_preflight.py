@@ -34,6 +34,7 @@ def test_save_and_load_settings_round_trip(tmp_path, monkeypatch):
     monkeypatch.setattr(settings_module, "SETTINGS_DIR", settings_path.parent)
 
     values = settings_module.profile_values("Performance")
+    values["device"] = "cpu"
     values["gui_advanced_mode"] = True
     settings_module.save_settings(values)
 
@@ -43,6 +44,7 @@ def test_save_and_load_settings_round_trip(tmp_path, monkeypatch):
 
     loaded = settings_module.load_settings()
     assert loaded["detect_every"] == 8
+    assert loaded["device"] == "cpu"
     assert loaded["gui_advanced_mode"] is True
 
 
@@ -128,3 +130,53 @@ def test_preflight_does_not_treat_xpu_as_a_selectable_cuda_device(tmp_path, monk
     errors = preflight_module.validate_processing_environment()
 
     assert any("Intel XPU" in error and "does not yet expose" in error for error in errors)
+
+
+
+def test_preflight_accepts_explicit_cpu_without_accelerator_probe(tmp_path, monkeypatch):
+    model = tmp_path / "model.pt"
+    model.write_bytes(b"model")
+    values = settings_module.DEFAULTS.copy()
+    values.update({
+        "model_path": str(model),
+        "device": "cpu",
+        "video_encoder": "opencv",
+    })
+
+    monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
+    monkeypatch.setattr(
+        preflight_module,
+        "inspect_backend_capabilities",
+        lambda: pytest.fail("CPU preflight must not probe an accelerator"),
+    )
+
+    assert preflight_module.validate_processing_environment() == []
+
+
+def test_preflight_checks_encoder_independently_of_cpu_inference(
+    tmp_path, monkeypatch
+):
+    model = tmp_path / "model.pt"
+    model.write_bytes(b"model")
+    values = settings_module.DEFAULTS.copy()
+    values.update({
+        "model_path": str(model),
+        "device": "cpu",
+        "video_encoder": "h264_nvenc",
+    })
+    encoder_checks = []
+
+    monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
+    monkeypatch.setattr(
+        preflight_module,
+        "_validate_nvenc",
+        lambda errors: encoder_checks.append("h264_nvenc"),
+    )
+    monkeypatch.setattr(
+        preflight_module,
+        "inspect_backend_capabilities",
+        lambda: pytest.fail("CPU inference must not probe a GPU"),
+    )
+
+    assert preflight_module.validate_processing_environment() == []
+    assert encoder_checks == ["h264_nvenc"]
