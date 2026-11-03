@@ -162,7 +162,6 @@ def test_collect_environment_handles_missing_pytorch(monkeypatch):
     assert cpu_environment["selected_inference_backend"] == "unavailable"
 
 
-
 def test_collect_environment_reports_explicit_cpu_only_runtime(monkeypatch):
     torch_module = _torch_module()
     _patch_environment(monkeypatch, torch_module)
@@ -173,3 +172,30 @@ def test_collect_environment_reports_explicit_cpu_only_runtime(monkeypatch):
     assert environment["gpu_backend"] is None
     assert environment["gpu"] is None
     assert environment["xpu_available"] is False
+
+
+def test_ffmpeg_version_hides_console_on_windows(monkeypatch, tmp_path):
+    ffmpeg = tmp_path / "ffmpeg.exe"
+    calls = []
+    no_window_flag = 0x08000000
+
+    monkeypatch.setattr(benchmark, "resolve_ffmpeg", lambda: ffmpeg)
+    monkeypatch.setattr(benchmark.sys, "platform", "win32")
+    monkeypatch.setattr(
+        benchmark.subprocess,
+        "CREATE_NO_WINDOW",
+        no_window_flag,
+        raising=False,
+    )
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(stdout="ffmpeg version test")
+
+    monkeypatch.setattr(benchmark.subprocess, "run", fake_run)
+
+    assert benchmark._ffmpeg_version() == "ffmpeg version test"
+    assert calls[0][0] == [str(ffmpeg), "-version"]
+    assert calls[0][1]["creationflags"] == no_window_flag
+
+
