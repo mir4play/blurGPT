@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -132,7 +133,6 @@ def test_preflight_does_not_treat_xpu_as_a_selectable_cuda_device(tmp_path, monk
     assert any("Intel XPU" in error and "does not yet expose" in error for error in errors)
 
 
-
 def test_preflight_accepts_explicit_cpu_without_accelerator_probe(tmp_path, monkeypatch):
     model = tmp_path / "model.pt"
     model.write_bytes(b"model")
@@ -180,3 +180,45 @@ def test_preflight_checks_encoder_independently_of_cpu_inference(
 
     assert preflight_module.validate_processing_environment() == []
     assert encoder_checks == ["h264_nvenc"]
+
+
+@pytest.mark.parametrize(
+    ("platform", "expect_hidden_console"),
+    [("win32", True), ("linux", False)],
+)
+def test_nvenc_preflight_hides_console_only_on_windows(
+    tmp_path, monkeypatch, platform, expect_hidden_console
+):
+    ffmpeg = tmp_path / "ffmpeg.exe"
+    calls = []
+    no_window_flag = 0x08000000
+
+    monkeypatch.setattr(preflight_module, "resolve_ffmpeg", lambda: ffmpeg)
+    monkeypatch.setattr(preflight_module.sys, "platform", platform)
+    monkeypatch.setattr(
+        preflight_module.subprocess,
+        "CREATE_NO_WINDOW",
+        no_window_flag,
+        raising=False,
+    )
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(stdout="h264_nvenc")
+
+    monkeypatch.setattr(preflight_module.subprocess, "run", fake_run)
+
+    errors = []
+    preflight_module._validate_nvenc(errors)
+
+    assert errors == []
+    assert calls[0][0] == [str(ffmpeg), "-hide_banner", "-encoders"]
+    assert calls[0][1]["capture_output"] is True
+    assert calls[0][1]["text"] is True
+    assert calls[0][1]["timeout"] == 5
+    if expect_hidden_console:
+        assert calls[0][1]["creationflags"] == no_window_flag
+    else:
+        assert "creationflags" not in calls[0][1]
+
+

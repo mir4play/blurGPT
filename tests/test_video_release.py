@@ -7,6 +7,7 @@ from unittest.mock import Mock
 # import-time dependency for this focused unit test.
 sys.modules.setdefault("cv2", SimpleNamespace(destroyAllWindows=lambda: None))
 
+import core.video as video_module
 from core.video import VideoProcessor
 
 
@@ -59,3 +60,47 @@ def test_normal_release_reports_nonzero_ffmpeg_exit():
 
     processor.ffmpeg.wait.assert_called_once()
     assert processor._released is True
+
+
+def test_nvenc_writer_hides_console_on_windows(monkeypatch, tmp_path):
+    processor = VideoProcessor.__new__(VideoProcessor)
+    processor.output_video = str(tmp_path / "output.mp4")
+    processor.nvenc_preset = "p4"
+    processor.nvenc_cq = 23
+    processor.width = 1920
+    processor.height = 1080
+    processor.fps = 29.97
+    processor.cap = Mock()
+
+    calls = []
+    no_window_flag = 0x08000000
+
+    monkeypatch.setattr(
+        video_module,
+        "resolve_ffmpeg",
+        lambda: tmp_path / "ffmpeg.exe",
+    )
+    monkeypatch.setattr(video_module.sys, "platform", "win32")
+    monkeypatch.setattr(
+        video_module.subprocess,
+        "CREATE_NO_WINDOW",
+        no_window_flag,
+        raising=False,
+    )
+
+    def fake_popen(command, **kwargs):
+        calls.append((command, kwargs))
+        return Mock()
+
+    monkeypatch.setattr(video_module.subprocess, "Popen", fake_popen)
+
+    processor._create_nvenc_writer()
+
+    assert calls[0][0][0] == str(tmp_path / "ffmpeg.exe")
+    assert calls[0][1]["creationflags"] == no_window_flag
+    assert calls[0][1]["stdin"] == video_module.subprocess.PIPE
+    assert calls[0][1]["stdout"] == video_module.subprocess.DEVNULL
+    assert calls[0][1]["stderr"] == video_module.subprocess.PIPE
+    assert processor.write_backend == "ffmpeg:h264_nvenc"
+
+

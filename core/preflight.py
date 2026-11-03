@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import subprocess
+import sys
 
 from core.backends import inspect_backend_capabilities
 from core.paths import DEFAULT_MODEL_PATH, ROOT_DIR, resolve_ffmpeg
@@ -23,12 +24,19 @@ def _validate_nvenc(errors):
         return
 
     try:
+        run_kwargs = {
+            "capture_output": True,
+            "text": True,
+            "timeout": 5,
+            "check": False,
+        }
+        if sys.platform == "win32":
+            # Keep the frozen GUI windowed while checking FFmpeg capabilities.
+            run_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
         result = subprocess.run(
             [str(ffmpeg), "-hide_banner", "-encoders"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
+            **run_kwargs,
         )
         if "h264_nvenc" not in result.stdout:
             errors.append(
