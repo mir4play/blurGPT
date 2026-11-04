@@ -8,7 +8,7 @@ Notes for a future packaged/portable Windows GUI build of BlurGPT (so end users 
 
 - `application_root()` uses `Path(sys.executable).parent` when `sys.frozen` is true (PyInstaller-style).
 - All runtime directories (`input/`, `output/`, `processing/`, `temp/`, `input_archive/`, `input_error/`, `input_removed/`, `logs/`, `config/`, `models/`, `ffmpeg/`) are resolved relative to that root.
-- `resolve_ffmpeg()` prefers a bundled `ffmpeg/ffmpeg.exe` next to the application root, then falls back to PATH.
+- `resolve_ffmpeg()` prefers a bundled `ffmpeg/ffmpeg.exe` next to the executable, then falls back to PATH.
 
 This keeps a portable layout predictable and avoids depending on the current working directory.
 
