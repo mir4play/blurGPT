@@ -8,7 +8,7 @@ Notes for a future packaged/portable Windows GUI build of BlurGPT (so end users 
 
 - `application_root()` uses `Path(sys.executable).parent` when `sys.frozen` is true (PyInstaller-style).
 - All runtime directories (`input/`, `output/`, `processing/`, `temp/`, `input_archive/`, `input_error/`, `input_removed/`, `logs/`, `config/`, `models/`, `ffmpeg/`) are resolved relative to that root.
-- `resolve_ffmpeg()` prefers a bundled `ffmpeg/ffmpeg.exe` next to the executable, then falls back to PATH.
+- `resolve_ffmpeg()` prefers a bundled `ffmpeg/ffmpeg.exe` next to the application root, then falls back to PATH.
 
 This keeps a portable layout predictable and avoids depending on the current working directory.
 
@@ -75,6 +75,8 @@ pyinstaller blurGPT.spec
 ```
 
 then place `models/blurGPT.pt` (and optionally `ffmpeg/ffmpeg.exe`) next to `dist/BlurGPT/BlurGPT.exe` and launch the GUI.
+
+The GitHub Actions workflow also runs the settings/preflight, benchmark, and FFmpeg writer regression test modules on `windows-latest`. This exercises the test suite on a real Windows Python runner, but it does not build or launch the PyInstaller executable, load the YOLO model, or validate a real FFmpeg/NVENC session. The frozen GUI smoke-test checklist above therefore remains a separate manual acceptance step.
 
 No frozen binary is produced by CI yet. When a pre-built portable package is available it will be announced on #14 / #23. Do not bump version or tag until a real release milestone is validated on `main` (see #29).
 
