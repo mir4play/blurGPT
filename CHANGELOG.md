@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now integrated on `main` (HEAD `3da1b5c`).
+GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now integrated on `main`.
 
 Recent: frozen console suppress (#64), models/ directory init on GUI startup (#65), community hardware compatibility feedback docs (#66), hardware backend inventory (#67), non-mutating PyTorch backend capability detection (#70), richer local benchmark environment metadata (#74), explicit CPU inference routing tests (#75), and Windows FFmpeg preflight console suppression (#76; code fix integrated; frozen-build smoke-test remains open in #59).
 
