@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now integrated on `main` (HEAD `3da1b5c`).
 
-Recent: frozen console suppress (#64), models/ directory init on GUI startup (#65), community hardware compatibility feedback docs (#66), hardware backend inventory (#67), non-mutating PyTorch backend capability detection (#70), richer local benchmark environment metadata (#74), explicit CPU inference routing tests (#75), and Windows FFmpeg preflight console suppression (#76; closes #59).
+Recent: frozen console suppress (#64), models/ directory init on GUI startup (#65), community hardware compatibility feedback docs (#66), hardware backend inventory (#67), non-mutating PyTorch backend capability detection (#70), richer local benchmark environment metadata (#74), explicit CPU inference routing tests (#75), and Windows FFmpeg preflight console suppression (#76; code fix integrated; frozen-build smoke-test remains open in #59).
 
 No version bump or tag yet. Packaging ready for local Windows frozen build via `blurGPT.spec`. Awaiting user confirmation of frozen smoke-test (no console window during processing/preflight, models/ created, origin-aware Remove, cancel/messaging) and release-gate review per #29 before considering 0.6.0.
 
@@ -82,7 +82,7 @@ No version bump or tag yet. Packaging ready for local Windows frozen build via `
 
 ### Known Limitations
 
-- Motion prediction depends on matching detections between consecutive YOLO inference frames.
+- Motion prediction depends on matching detections between consecutive inference frames.
 - If detections change order, objects appear/disappear, or matching becomes ambiguous, temporary bounding-box jumps may occur.
 - Future tracking improvements are planned to make temporal association more robust.
 
