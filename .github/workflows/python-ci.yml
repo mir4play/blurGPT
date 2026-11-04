@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches:
+      - main
       - feature/pyside6-gui
 
 permissions:
@@ -25,3 +26,23 @@ jobs:
         run: python -m compileall -q blurGPT.py config.py core gui gui.py tests
       - name: Run unit tests
         run: python -m pytest -q
+
+  windows-subprocess-regressions:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install test runner
+        run: python -m pip install --upgrade pytest
+      - name: Compile Python sources
+        run: python -m compileall -q blurGPT.py config.py core gui gui.py tests
+      - name: Run Windows-relevant subprocess regression tests
+        run: >-
+          python -m pytest -q
+          tests/test_settings_preflight.py
+          tests/test_benchmark.py
+          tests/test_video_release.py
