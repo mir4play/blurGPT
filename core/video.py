@@ -189,4 +189,3 @@ class VideoProcessor:
                 self.writer.release()
         finally:
             self._released = True
-            cv2.destroyAllWindows()
