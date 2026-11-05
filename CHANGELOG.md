@@ -6,13 +6,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-GUI milestone (PySide6 desktop app, shared BatchProcessor, origin-aware Remove, messaging/summary dialog, packaging notes + starter PyInstaller spec, settings/preflight tests) is now integrated on `main`.
 
-Recent: frozen console suppression (#64), models/ directory initialization on GUI startup (#65), community hardware compatibility feedback docs (#66), hardware backend inventory (#67), non-mutating PyTorch backend capability detection (#70), richer local benchmark environment metadata (#74), explicit CPU inference routing tests (#75), and Windows FFmpeg preflight console suppression (#76). The Windows frozen-build smoke test was completed successfully on 2026-11-05: GUI startup, model loading, CUDA/FFmpeg/NVENC detection, and short-video output with blur were verified.
 
-No version bump or tag yet. Packaging ready for local Windows frozen build via `blurGPT.spec`. Windows frozen smoke-test passed on 2026-11-05, including successful blurred output after rebuilding the onedir package. Release-gate review per #29 is still required before considering 0.6.0.
+---
+
+## [0.6.0] - 2026-11-05
+
+### Added
+
+- PySide6 desktop GUI with queue management, drag-and-drop, persistent settings, processing profiles (Recommended / Performance / Quality / Custom), finish/cancel summary dialog, and origin-aware Remove.
+- Shared Qt-free `BatchProcessor` used by both CLI and GUI.
+- CLI preflight and shared `resolve_ffmpeg()` helper.
+- Settings/preflight automated tests and baseline CI (including Windows subprocess regression coverage).
+- Starter PyInstaller spec (`blurGPT.spec`) and packaging notes for portable Windows frozen builds.
+- Models directory initialization on GUI startup.
+- Frozen console suppression for FFmpeg child processes (CREATE_NO_WINDOW).
+- Non-mutating PyTorch backend capability detection.
+- Richer local benchmark environment metadata.
+- Explicit CPU inference routing tests.
+- Community hardware compatibility feedback docs and hardware backend inventory.
+
+### Fixed
 
 - Removed the unsupported OpenCV HighGUI `cv2.destroyAllWindows()` cleanup call from the PySide6 video-processing release path; verified in the Windows frozen executable.
+- NVENC cancel path no longer routes cancelled jobs to error folders.
+- Queue safety: non-destructive Remove, duplicate-add protection, and per-file error handling on import.
+
+### Changed
+
+- Version bumped from 0.5.0 to 0.6.0.
+- Windows frozen-build smoke test completed successfully on 2026-11-05 (GUI startup without console, model load, CUDA/FFmpeg/NVENC detection, short-video blur output, cancel/messaging/settings persistence).
+
+### Documentation
+
+- Packaging, architecture, GUI, and roadmap docs reconciled with the shipped GUI milestone and frozen-build readiness.
 
 ---
 
