@@ -6,16 +6,7 @@ Actionable GUI tasks live in **GitHub Issues**. Orientation for the desktop app 
 
 ## Current priorities
 
-### 1. Desktop GUI (active)
-
-The PySide6 GUI is now integrated on `main`: queue, worker thread, settings profiles, live metrics, finish/cancel messaging, and folder shortcuts.
-
-Principles and run instructions: [`docs/gui.md`](gui.md).
-Trackable items: parent issue **GUI development backlog** (and linked child issues).
-
-Focus remains simple and functional — queue correctness, clear errors, shared processing engine — not feature sprawl.
-
-### 2. Hardware/backend portability
+### 1. Hardware/backend portability
 
 Expand runtime compatibility beyond the current NVIDIA/CUDA-first path without destabilizing the working Windows executable. Track this work in **#61 — Hardware portability: CUDA, other GPU backends, and CPU fallback**.
 
@@ -35,20 +26,20 @@ A non-mutating capability probe now distinguishes CPU availability, NVIDIA CUDA,
 
 The current source-level device/encoder inventory and validation status are in [`docs/hardware-backends.md`](hardware-backends.md). No claim of universal GPU support should be made without backend-specific runtime validation and documented benchmark conditions.
 
-### 3. Model development
+### 2. Model development
 
 Continue improving training data and model versions for combined face and license-plate detection. Keep training experiments separate from the runtime so the README always describes the model shipped with the application.
 
-### 4. Configuration hygiene
+### 3. Configuration hygiene
 
-Optional cleanup after 0.5.0:
+Optional cleanup after 0.6.0:
 
 - remove or wire the legacy `SHOW_VIDEO`, `SAVE_VIDEO`, and `SHOW_REPORT` flags
 - remove `CLASSES` if class filtering is not intended to be configurable
 
 These are maintenance items, not blockers for the current runtime.
 
-### 5. Model packaging
+### 4. Model packaging
 
 The runtime weight is still a normal git blob (~44 MB). Consider Git LFS or a release asset + download-on-first-run if the model is iterated often or cloned on multiple machines.
 
@@ -59,6 +50,21 @@ The runtime weight is still a normal git blob (~44 MB). Consider Git LFS or a re
 - Further motion quality work only if measured leaks remain after the 0.5.0 matching/size fixes (full ByteTrack/BoT-SORT still out of scope unless quality or FPS gains are demonstrated)
 - Packaged Windows distribution / first-run diagnostics
 - Hardware-specific packaging/build targets for CUDA, CPU, AMD and Intel backends as compatibility work matures
+
+## Completed in 0.6.0
+
+- PySide6 desktop GUI with queue management, drag-and-drop, persistent settings, processing profiles, finish/cancel summary dialog, and origin-aware Remove
+- Shared Qt-free `BatchProcessor` used by both CLI and GUI
+- CLI preflight and shared `resolve_ffmpeg()` helper
+- Starter PyInstaller spec and packaging notes for portable Windows frozen builds
+- Models directory initialization on GUI startup
+- Frozen console suppression for FFmpeg child processes (`CREATE_NO_WINDOW`)
+- Non-mutating PyTorch backend capability detection
+- Richer local benchmark environment metadata
+- Explicit CPU inference routing tests
+- NVENC cancel path no longer routes cancelled jobs to error folders
+- Queue safety improvements and OpenCV cleanup fix for frozen builds
+- Successful Windows frozen-build smoke test (2026-11-05)
 
 ## Completed in 0.5.0
 
