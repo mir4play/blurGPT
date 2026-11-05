@@ -12,6 +12,8 @@ Recent: frozen console suppression (#64), models/ directory initialization on GU
 
 No version bump or tag yet. Packaging ready for local Windows frozen build via `blurGPT.spec`. Windows frozen smoke-test passed on 2026-11-05, including successful blurred output after rebuilding the onedir package. Release-gate review per #29 is still required before considering 0.6.0.
 
+- Removed the unsupported OpenCV HighGUI `cv2.destroyAllWindows()` cleanup call from the PySide6 video-processing release path; verified in the Windows frozen executable.
+
 ---
 
 ## [0.5.0] - 2026-09-06
