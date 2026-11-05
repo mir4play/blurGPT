@@ -59,7 +59,7 @@ Place the YOLO model and (optionally) a CUDA-enabled FFmpeg with NVENC next to t
 - [ ] Confirm `sys.frozen` path resolution works under PyInstaller on Windows.
 - [ ] Bundle or document the YOLO model (`models/blurGPT.pt`).
 - [ ] Decide FFmpeg strategy: bundled `ffmpeg.exe` with `h264_nvenc`, or require it on PATH.
-- [ ] Verify CUDA/PyTorch runtime dependencies are either bundled or clearly required (current app requires CUDA at startup).
+- [ ] Verify PyTorch runtime dependencies are bundled or clearly documented. The default profile selects CUDA device 0 and NVENC; explicit CPU inference is available, but CPU-only frozen packaging/runtime has not yet been validated and requires selecting OpenCV / `mp4v` encoding.
 - [ ] Smoke-test: start GUI, add external video, process short clip with NVENC, cancel mid-job, Remove (origin-aware), open result folders.
 - [ ] Confirm settings persist in `config/settings.json` next to the exe.
 - [ ] Document any antivirus/false-positive notes for the frozen binary.
