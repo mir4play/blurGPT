@@ -59,7 +59,7 @@ Place the YOLO model and (optionally) a CUDA-enabled FFmpeg with NVENC next to t
 - [ ] Confirm `sys.frozen` path resolution works under PyInstaller on Windows.
 - [ ] Bundle or document the YOLO model (`models/blurGPT.pt`).
 - [ ] Decide FFmpeg strategy: bundled `ffmpeg.exe` with `h264_nvenc`, or require it on PATH.
-- [ ] Verify CUDA/PyTorch runtime dependencies are either bundled or clearly required (current app requires CUDA at startup).
+- [ ] Verify PyTorch runtime dependencies are bundled or clearly documented. The default profile selects CUDA device 0 and NVENC; explicit CPU inference is available, but CPU-only frozen packaging/runtime has not yet been validated and requires selecting OpenCV / `mp4v` encoding.
 - [ ] Smoke-test: start GUI, add external video, process short clip with NVENC, cancel mid-job, Remove (origin-aware), open result folders.
 - [ ] Confirm settings persist in `config/settings.json` next to the exe.
 - [ ] Document any antivirus/false-positive notes for the frozen binary.
@@ -76,8 +76,10 @@ pyinstaller blurGPT.spec
 
 then place `models/blurGPT.pt` (and optionally `ffmpeg/ffmpeg.exe`) next to `dist/BlurGPT/BlurGPT.exe` and launch the GUI.
 
+Console suppression for FFmpeg child processes (CREATE_NO_WINDOW / equivalent) is integrated on `main` (#64 processing, #76 preflight). Issue #59 remains open pending user confirmation that no console window appears during a frozen Windows smoke-test.
+
 The GitHub Actions workflow also runs the settings/preflight, benchmark, and FFmpeg writer regression test modules on `windows-latest`. This exercises the test suite on a real Windows Python runner, but it does not build or launch the PyInstaller executable, load the YOLO model, or validate a real FFmpeg/NVENC session. The frozen GUI smoke-test checklist above therefore remains a separate manual acceptance step.
 
 No frozen binary is produced by CI yet. When a pre-built portable package is available it will be announced on #14 / #23. Do not bump version or tag until a real release milestone is validated on `main` (see #29).
 
-Related: #14 (GUI backlog), #23 (handoff), #29 (release gates).
+Related: #14 (GUI backlog), #23 (handoff), #29 (release gates), #59 (frozen console confirmation).
