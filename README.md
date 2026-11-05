@@ -5,7 +5,7 @@
 
 BlurGPT is a GPU-accelerated video anonymization tool for offline processing. It uses a YOLO object-detection model to detect faces and license plates, then pixelates the detected regions while preserving the rest of the video.
 
-> **Project status:** active development. The current documented application version is **0.5.0**.
+> **Project status:** active development. The current documented application version is **0.6.0**.
 
 ---
 
@@ -15,7 +15,7 @@ BlurGPT is a GPU-accelerated video anonymization tool for offline processing. It
 - 🎞️ NVIDIA NVENC hardware video encoding (OpenCV fallback available)
 - 😀 Face detection
 - 🚗 License plate detection
-- 🟪 Pixelation anonymization
+- 🟣 Pixelation anonymization
 - 📹 Batch processing of common video formats
 - 🛡️ Failed jobs routed to `input_error/` without stopping the batch
 - ♻️ YOLO model loaded once and reused across the batch

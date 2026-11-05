@@ -8,7 +8,7 @@ Altere apenas este arquivo para configurar o programa.
 #==========================================================
 # PROJECT
 APP_NAME = "BlurGPT"
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 AUTHOR = "Adler Nicolau"
 #==========================================================
 
