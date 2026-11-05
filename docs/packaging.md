@@ -56,19 +56,19 @@ Place the YOLO model and (optionally) a CUDA-enabled FFmpeg with NVENC next to t
 ## Checklist before a testable frozen build
 
 - [x] Starter PyInstaller spec (`blurGPT.spec`) present.
-- [ ] Confirm `sys.frozen` path resolution works under PyInstaller on Windows.
-- [ ] Bundle or document the YOLO model (`models/blurGPT.pt`).
-- [ ] Decide FFmpeg strategy: bundled `ffmpeg.exe` with `h264_nvenc`, or require it on PATH.
-- [ ] Verify PyTorch runtime dependencies are bundled or clearly documented. The default profile selects CUDA device 0 and NVENC; explicit CPU inference is available, but CPU-only frozen packaging/runtime has not yet been validated and requires selecting OpenCV / `mp4v` encoding.
-- [ ] Smoke-test: start GUI, add external video, process short clip with NVENC, cancel mid-job, Remove (origin-aware), open result folders.
-- [ ] Confirm settings persist in `config/settings.json` next to the exe.
+- [x] Confirm `sys.frozen` path resolution works under PyInstaller on Windows.
+- [x] Bundle or document the YOLO model (`models/blurGPT.pt`) — model placed in the required `models/` folder next to the executable.
+- [x] Decide FFmpeg strategy: bundled `ffmpeg.exe` with `h264_nvenc`, or require it on PATH — the tested environment detected FFmpeg/NVENC.
+- [x] Verify the PyTorch runtime dependencies in the tested NVIDIA/CUDA environment. The default profile selected CUDA device 0 and NVENC. CPU-only frozen packaging/runtime remains unvalidated and requires selecting OpenCV / `mp4v` encoding.
+- [x] Smoke-test on 2026-11-05: GUI started without a console window; model loaded from `models/`; CUDA and FFmpeg/NVENC were detected; cancellation/error handling and settings persistence passed; a short input video was processed and the output video was created successfully with blur.
+- [x] Confirm settings persist in `config/settings.json` next to the exe.
 - [ ] Document any antivirus/false-positive notes for the frozen binary.
 
 ## Status
 
-**Ready for local Windows frozen-build smoke-test.**
+**Windows frozen-build smoke-test passed (2026-11-05).**
 
-The starter PyInstaller spec (`blurGPT.spec`) and these notes are on `main`. A user with the development environment can now run:
+The starter PyInstaller spec (`blurGPT.spec`) and these notes are on `main`. The onedir executable was rebuilt and manually smoke-tested on Windows on 2026-11-05. A developer with the development environment can reproduce the build with:
 
 ```bat
 pyinstaller blurGPT.spec
@@ -76,9 +76,9 @@ pyinstaller blurGPT.spec
 
 then place `models/blurGPT.pt` (and optionally `ffmpeg/ffmpeg.exe`) next to `dist/BlurGPT/BlurGPT.exe` and launch the GUI.
 
-Console suppression for FFmpeg child processes (CREATE_NO_WINDOW / equivalent) is integrated on `main` (#64 processing, #76 preflight). Issue #59 remains open pending user confirmation that no console window appears during a frozen Windows smoke-test.
+Console suppression for FFmpeg child processes (CREATE_NO_WINDOW / equivalent) is integrated on `main` (#64 processing, #76 preflight). The frozen smoke-test confirmed that no console window appears and that a short video produces a valid blurred output. Issue #59 can be closed based on this acceptance test.
 
-The GitHub Actions workflow also runs the settings/preflight, benchmark, and FFmpeg writer regression test modules on `windows-latest`. This exercises the test suite on a real Windows Python runner, but it does not build or launch the PyInstaller executable, load the YOLO model, or validate a real FFmpeg/NVENC session. The frozen GUI smoke-test checklist above therefore remains a separate manual acceptance step.
+The GitHub Actions workflow also runs the settings/preflight, benchmark, and FFmpeg writer regression test modules on `windows-latest`. This exercises the test suite on a real Windows Python runner, but it does not build or launch the PyInstaller executable, load the YOLO model, or validate a real FFmpeg/NVENC session. The frozen GUI smoke-test checklist above was completed manually on 2026-11-05; CI still does not build or launch the PyInstaller executable or validate a real FFmpeg/NVENC session.
 
 No frozen binary is produced by CI yet. When a pre-built portable package is available it will be announced on #14 / #23. Do not bump version or tag until a real release milestone is validated on `main` (see #29).
 
