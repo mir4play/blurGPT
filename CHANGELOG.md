@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-
+- GUI settings: added detection model selector (lists *.pt files from models/).
 
 ---
 

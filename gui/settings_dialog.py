@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -12,6 +14,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from core.paths import MODEL_DIR
 from core.settings import load_settings, profile_values, save_settings
 
 
@@ -49,6 +52,24 @@ class SettingsDialog(QDialog):
         )
         self.profile.currentIndexChanged.connect(self._profile_changed)
         form.addRow("Processing profile", self.profile)
+
+        # Model selection: list .pt files in models/
+        self.model = QComboBox()
+        models = sorted(MODEL_DIR.glob("*.pt")) if MODEL_DIR.is_dir() else []
+        current_model = Path(settings["model_path"]).name
+        for model_path in models:
+            self.model.addItem(model_path.name, str(model_path))
+        if not models:
+            self.model.addItem("blurGPT.pt (default)", str(MODEL_DIR / "blurGPT.pt"))
+        # Select current
+        index = self.model.findText(current_model)
+        if index >= 0:
+            self.model.setCurrentIndex(index)
+        self.model.setToolTip(
+            "Select a YOLO model from the models/ directory. "
+            "The default is blurGPT.pt. Place additional .pt files there to switch."
+        )
+        form.addRow("Detection model", self.model)
 
         self.device = QComboBox()
         self.device.addItem("GPU 0 (recommended)", 0)
@@ -177,8 +198,9 @@ class SettingsDialog(QDialog):
 
     def _save(self):
         current_settings = load_settings()
+        selected_model = self.model.currentData() or current_settings["model_path"]
         save_settings({
-            "model_path": current_settings["model_path"],
+            "model_path": selected_model,
             "device": self.device.currentData(),
             "detect_every": self.detect_every.value(),
             "imgsz": self.imgsz.value(),
