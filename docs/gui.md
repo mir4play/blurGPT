@@ -88,6 +88,8 @@ gui.py
 
 Settings changed in the dialog apply to the **next** processing run, not a job already in flight.
 
+The settings dialog includes a **Detection model** dropdown that lists `*.pt` files found in `models/`. The default remains `blurGPT.pt`. Place additional model files in that directory to switch without editing config files.
+
 Shipped polish (merged into `feature/pyside6-gui`):
 
 - Drag-and-drop import
@@ -95,6 +97,7 @@ Shipped polish (merged into `feature/pyside6-gui`):
 - Persist Clean/Advanced mode across launches
 - Finish/cancel summary dialog with folder shortcuts
 - Origin-aware Remove (avoids full-size duplicates for external files)
+- Detection model selector in settings dialog
 
 ---
 
