@@ -45,7 +45,7 @@ BlurGPT/
 └── ffmpeg/
 ```
 
-`blurGPT.pt` is intentionally not created or bundled by the runtime-directory initializer. If the model is missing, preflight reports the resolved path and explicitly tells the user to place the model at `models/blurGPT.pt`.
+`blurGPT.pt` is intentionally not created or bundled by the runtime-directory initializer. If the model is missing, preflight reports the resolved path and explicitly tells the user to place a model at `models/`. The settings dialog lists available `*.pt` files so users can select which model to use (default remains `blurGPT.pt`).
 
 ---
 
@@ -95,6 +95,7 @@ Shipped polish (merged into `feature/pyside6-gui`):
 - Persist Clean/Advanced mode across launches
 - Finish/cancel summary dialog with folder shortcuts
 - Origin-aware Remove (avoids full-size duplicates for external files)
+- Settings dialog detection model selector (lists *.pt files from models/)
 
 ---
 
