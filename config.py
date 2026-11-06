@@ -41,7 +41,7 @@ DEVICE = 0
 # CLASSES
 # ==========================================================
 
-# Classes treinadas
+# Classes treinadas (documentação do modelo; o runtime usa os índices YOLO diretamente)
 CLASSES = {
     "face": 1,
     "plate": 0
@@ -83,15 +83,3 @@ VIDEO_CODEC = "mp4v"
 # Qualidade NVENC: valores menores = maior qualidade / maior bitrate.
 VIDEO_NVENC_CQ = 23
 VIDEO_NVENC_PRESET = "p4"
-
-# Mostrar vídeo durante processamento
-SHOW_VIDEO = False
-
-# Salvar vídeo
-SAVE_VIDEO = True
-
-# ==========================================================
-# RELATÓRIO
-# ==========================================================
-
-SHOW_REPORT = True
