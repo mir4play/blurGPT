@@ -45,11 +45,14 @@ The runtime weight is still a normal git blob (~44 MB). Consider Git LFS or a re
 
 ## Under evaluation
 
-- GUI model selection: keep `models/` as the required model directory, but add a dropdown that automatically lists available `.pt` files so users can select a model instead of requiring the exact filename `models/blurGPT.pt`. The current runtime remains unchanged and still expects `models/blurGPT.pt` until this feature is implemented.
 - Additional anonymization methods
 - Further motion quality work only if measured leaks remain after the 0.5.0 matching/size fixes (full ByteTrack/BoT-SORT still out of scope unless quality or FPS gains are demonstrated)
 - Packaged Windows distribution / first-run diagnostics
 - Hardware-specific packaging/build targets for CUDA, CPU, AMD and Intel backends as compatibility work matures
+
+## Completed after 0.6.0
+
+- GUI settings dialog model selector: lists `*.pt` files from `models/` so users can switch detection models without editing config. Default remains `blurGPT.pt`.
 
 ## Completed in 0.6.0
 
