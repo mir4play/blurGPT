@@ -45,7 +45,6 @@ The runtime weight is still a normal git blob (~44 MB). Consider Git LFS or a re
 
 ## Under evaluation
 
-- GUI model selection: keep `models/` as the required model directory, but add a dropdown that automatically lists available `.pt` files so users can select a model instead of requiring the exact filename `models/blurGPT.pt`. The current runtime remains unchanged and still expects `models/blurGPT.pt` until this feature is implemented.
 - Additional anonymization methods
 - Further motion quality work only if measured leaks remain after the 0.5.0 matching/size fixes (full ByteTrack/BoT-SORT still out of scope unless quality or FPS gains are demonstrated)
 - Packaged Windows distribution / first-run diagnostics
@@ -53,6 +52,7 @@ The runtime weight is still a normal git blob (~44 MB). Consider Git LFS or a re
 
 ## Completed in 0.6.0
 
+- GUI settings detection model selector (lists *.pt files from models/; default blurGPT.pt remains).
 - PySide6 desktop GUI with queue management, drag-and-drop, persistent settings, processing profiles, finish/cancel summary dialog, and origin-aware Remove
 - Shared Qt-free `BatchProcessor` used by both CLI and GUI
 - CLI preflight and shared `resolve_ffmpeg()` helper
