@@ -34,8 +34,8 @@ Continue improving training data and model versions for combined face and licens
 
 Optional cleanup after 0.6.0:
 
-- remove or wire the legacy `SHOW_VIDEO`, `SAVE_VIDEO`, and `SHOW_REPORT` flags
-- remove `CLASSES` if class filtering is not intended to be configurable
+- ~~remove or wire the legacy `SHOW_VIDEO`, `SAVE_VIDEO`, and `SHOW_REPORT` flags~~ (removed 2026-11-06; never referenced by runtime)
+- remove `CLASSES` if class filtering is not intended to be configurable (currently kept as documentation of the model class mapping)
 
 These are maintenance items, not blockers for the current runtime.
 
