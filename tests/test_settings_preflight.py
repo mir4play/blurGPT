@@ -143,7 +143,13 @@ def test_preflight_accepts_explicit_cpu_without_accelerator_probe(tmp_path, monk
         "video_encoder": "opencv",
     })
 
+    torch_imports = []
     monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
+    monkeypatch.setattr(
+        preflight_module,
+        "import_module",
+        lambda name: torch_imports.append(name),
+    )
     monkeypatch.setattr(
         preflight_module,
         "inspect_backend_capabilities",
@@ -151,6 +157,38 @@ def test_preflight_accepts_explicit_cpu_without_accelerator_probe(tmp_path, monk
     )
 
     assert preflight_module.validate_processing_environment() == []
+    assert torch_imports == ["torch"]
+
+
+def test_preflight_reports_missing_pytorch_for_cpu_without_accelerator_probe(
+    tmp_path, monkeypatch
+):
+    model = tmp_path / "model.pt"
+    model.write_bytes(b"model")
+    values = settings_module.DEFAULTS.copy()
+    values.update({
+        "model_path": str(model),
+        "device": "cpu",
+        "video_encoder": "opencv",
+    })
+
+    def fail_torch_import(name):
+        assert name == "torch"
+        raise ModuleNotFoundError("No module named 'torch'")
+
+    monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
+    monkeypatch.setattr(preflight_module, "import_module", fail_torch_import)
+    monkeypatch.setattr(
+        preflight_module,
+        "inspect_backend_capabilities",
+        lambda: pytest.fail("CPU preflight must not probe an accelerator"),
+    )
+
+    errors = preflight_module.validate_processing_environment()
+
+    assert len(errors) == 1
+    assert "CPU inference requires PyTorch" in errors[0]
+    assert "ModuleNotFoundError: No module named 'torch'" in errors[0]
 
 
 def test_preflight_checks_encoder_independently_of_cpu_inference(
