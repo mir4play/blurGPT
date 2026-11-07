@@ -58,6 +58,7 @@ def test_preflight_reports_missing_model_without_gpu_dependency(tmp_path, monkey
     })
 
     monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
+    monkeypatch.setattr(preflight_module, "import_module", lambda name: object())
 
     errors = preflight_module.validate_processing_environment()
 
@@ -205,6 +206,7 @@ def test_preflight_checks_encoder_independently_of_cpu_inference(
     encoder_checks = []
 
     monkeypatch.setattr(preflight_module, "load_settings", lambda: values)
+    monkeypatch.setattr(preflight_module, "import_module", lambda name: object())
     monkeypatch.setattr(
         preflight_module,
         "_validate_nvenc",
