@@ -1,5 +1,6 @@
 """Pre-flight validation for a BlurGPT processing run."""
 
+from importlib import import_module
 from pathlib import Path
 import subprocess
 import sys
@@ -68,6 +69,14 @@ def validate_processing_environment(settings=None):
 
     device = effective["device"]
     if device == "cpu":
+        try:
+            import_module("torch")
+        except Exception as exc:
+            errors.append(
+                "PyTorch could not be loaded, but CPU inference requires PyTorch.\n"
+                "Install a compatible PyTorch build for this Python environment.\n"
+                f"PyTorch import details: {type(exc).__name__}: {exc}"
+            )
         return errors
 
     capabilities = inspect_backend_capabilities()
