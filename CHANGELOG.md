@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- CPU preflight now reports a missing or unloadable PyTorch runtime before processing, without probing accelerator devices.
 - GUI settings: added detection model selector (lists *.pt files from models/).
 - Config hygiene: removed unused `SHOW_VIDEO`, `SAVE_VIDEO`, and `SHOW_REPORT` flags (they were never referenced by the runtime).
 
