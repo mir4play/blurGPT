@@ -34,13 +34,5 @@ class Detection:
         return self.y2 - self.y1
 
     @property
-    def w(self):
-        return self.width
-
-    @property
-    def h(self):
-        return self.height
-
-    @property
     def area(self):
         return self.width * self.height
