@@ -38,16 +38,6 @@ MODEL_PATH = "models/blurGPT.pt"
 DEVICE = 0
 
 # ==========================================================
-# CLASSES
-# ==========================================================
-
-# Classes treinadas (documentação do modelo; o runtime usa os índices YOLO diretamente)
-CLASSES = {
-    "face": 1,
-    "plate": 0
-}
-
-# ==========================================================
 # DETECÇÃO
 # ==========================================================
 
