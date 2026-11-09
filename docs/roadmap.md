@@ -13,7 +13,7 @@ Expand runtime compatibility beyond the current NVIDIA/CUDA-first path without d
 The compatibility strategy is deliberately incremental:
 
 - preserve the current NVIDIA/CUDA + NVENC path as the performance reference implementation
-- document the existing explicit CPU device route accurately; do not describe it as an automatic fallback or validated support until its runtime behavior is independently checked
+- keep the explicit CPU route distinct from automatic fallback; a Windows CI source-runtime smoke now exercises real model inference and the BatchProcessor with OpenCV `mp4v`, while frozen-build, user-hardware, and real-footage validation remain outstanding
 - keep CPU inference and video encoding separate; CPU-only attempts need an available software encoder such as the existing OpenCV `mp4v` path
 - evaluate AMD GPU acceleration (initially ROCm on supported platforms) in an isolated environment
 - evaluate Intel GPU acceleration (the appropriate PyTorch XPU/oneAPI path) separately
@@ -22,7 +22,7 @@ The compatibility strategy is deliberately incremental:
 - use separate build/package targets when a single universal executable would introduce unsafe or excessive dependencies
 - use the structured volunteer report form and short benchmark guidance in [`docs/compatibility.md`](compatibility.md), without adding telemetry or requiring the maintainer to test every alternative configuration
 
-A non-mutating capability probe now distinguishes CPU availability, NVIDIA CUDA, ROCm/HIP, and Intel XPU when exposed by the installed PyTorch build. Local benchmark records also capture the CPU identifier, selected inference backend, PyTorch/CUDA/ROCm versions, GPU name, and XPU availability/name where exposed. This is diagnostic metadata only: it does not select devices, send telemetry, or change the current CUDA device-index selector, encoder selection, or NVIDIA defaults. XPU is not selectable yet, and no alternative backend is runtime-certified. The explicit CPU route is also covered by hardware-independent tests for settings persistence, preflight, and unchanged device forwarding to Ultralytics; these tests do not replace runtime validation.
+A non-mutating capability probe now distinguishes CPU availability, NVIDIA CUDA, ROCm/HIP, and Intel XPU when exposed by the installed PyTorch build. Local benchmark records also capture the CPU identifier, selected inference backend, PyTorch/CUDA/ROCm versions, GPU name, and XPU availability/name where exposed. This is diagnostic metadata only: it does not select devices, send telemetry, or change the current CUDA device-index selector, encoder selection, or NVIDIA defaults. XPU is not selectable yet, and no alternative GPU backend is runtime-certified. The explicit CPU route is covered by hardware-independent tests and a Windows GitHub Actions source-runtime smoke (2026-11-09): the real repository model was loaded, four synthetic frames were processed through `BatchProcessor` on CPU, and the output was encoded/reopened with OpenCV `mp4v`. This verifies a short source-runtime path on a hosted Windows runner; it does not validate the frozen executable, user hardware, real footage, or detection/pixelation quality.
 
 The current source-level device/encoder inventory and validation status are in [`docs/hardware-backends.md`](hardware-backends.md). No claim of universal GPU support should be made without backend-specific runtime validation and documented benchmark conditions.
 
