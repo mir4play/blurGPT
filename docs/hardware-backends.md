@@ -1,7 +1,7 @@
 # Hardware backend inventory
 
-**Source audit date:** 2026-11-01  
-**Scope:** source-level inspection of the current `main` implementation. No alternative-hardware runtime tests were performed for this inventory.
+**Source audit date:** 2026-11-09  
+**Scope:** source-level inspection of the current implementation plus a narrow CPU + OpenCV source-runtime smoke on a hosted Windows GitHub Actions runner. No AMD/Intel GPU runtime tests or frozen-build CPU tests were performed.
 
 This document records what the current code actually selects and validates. It is not a promise that every listed device or backend is supported.
 
@@ -35,7 +35,7 @@ Inference and encoding are separate capabilities. Selecting CPU inference does n
 | Configuration | Source-level status | Validation status |
 |---|---|---|
 | NVIDIA CUDA + FFmpeg NVENC | Existing default/reference path | Maintainer benchmarked on RTX 4060 Laptop; preserve as-is |
-| CPU inference + OpenCV `mp4v` | Explicit CPU device route and software encoder exist | Unit tests cover CPU setting persistence, preflight, and device forwarding; current-main/frozen-build runtime validation is not recorded, and it is likely substantially slower |
+| CPU inference + OpenCV `mp4v` | Explicit CPU device route and software encoder exist | Windows GitHub Actions source-runtime smoke passed 2026-11-09 with the real model, a four-frame synthetic clip, `BatchProcessor`, and OpenCV encode/decode. Frozen executable, user hardware, real-footage detection quality, and representative performance remain unvalidated |
 | AMD GPU / ROCm | PyTorch HIP runtime is distinguished from NVIDIA CUDA when the CUDA-compatible API exposes a device; current integer device route is unchanged | Not validated; do not claim support |
 | Intel GPU / XPU | PyTorch `torch.xpu` availability is reported when exposed by the installed build | Not selectable in current settings; not implemented/validated for inference |
 | New NVIDIA platforms (including DGX Spark) | No platform-specific branch; would use the NVIDIA/PyTorch stack if compatible | Not validated on those platforms |
@@ -44,10 +44,11 @@ A CPU option in the settings is not the same as an automatic fallback. BlurGPT d
 
 ## Safe next steps
 
-1. Use the expanded local benchmark metadata when reviewing volunteer reports. Logs remain local; contributors should copy only relevant fields and redact private paths or filenames.
-2. Invite volunteers to test CPU and alternative backends with the short procedure in [community compatibility guidance](compatibility.md). A short successful run is enough for an initial compatibility signal; long performance comparisons are optional.
-3. Evaluate AMD/ROCm and Intel/XPU in separate dependency environments and, if needed, separate packaging targets. Do not add their packages to the current NVIDIA Windows build by default.
-4. Consider a backend validated only after a reproducible runtime report identifies the hardware, OS, driver, PyTorch/Ultralytics versions, workload, and actual encoder.
+1. Perform a separate Windows frozen-build check with a representative clip containing faces and plates; verify anonymization quality and record the actual CPU, OS, PyTorch/Ultralytics versions, and encoder. The CI smoke uses synthetic frames and does not assess detection quality.
+2. Use the expanded local benchmark metadata when reviewing volunteer reports. Logs remain local; contributors should copy only relevant fields and redact private paths or filenames.
+3. Invite volunteers to test CPU and alternative backends with the short procedure in [community compatibility guidance](compatibility.md). A short successful run is enough for an initial compatibility signal; long performance comparisons are optional.
+4. Evaluate AMD/ROCm and Intel/XPU in separate dependency environments and, if needed, separate packaging targets. Do not add their packages to the current NVIDIA Windows build by default.
+5. Consider a backend validated only after a reproducible runtime report identifies the hardware, OS, driver, PyTorch/Ultralytics versions, workload, and actual encoder.
 
 The capability probe is intentionally descriptive, not a universal device-selection layer. The current CUDA index and NVENC defaults remain unchanged; do not implement automatic fallback or a broad backend selector until each path has a clear dependency and validation plan.
 
