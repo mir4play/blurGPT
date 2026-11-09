@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - CPU preflight now reports a missing or unloadable PyTorch runtime before processing, without probing accelerator devices.
 - GUI settings: added detection model selector (lists *.pt files from models/).
 - Config hygiene: removed unused `SHOW_VIDEO`, `SAVE_VIDEO`, and `SHOW_REPORT` flags (they were never referenced by the runtime).
+- Config hygiene: removed unused `CLASSES` dict (kept only as model-class documentation; runtime uses YOLO indices directly).
 - Detection: removed unused `.w` / `.h` aliases (call sites use `.width` / `.height`).
 - Windows CI source-runtime smoke for explicit CPU inference + OpenCV `mp4v` path (real repository model, BatchProcessor, JobManager; temp-isolated). Does not alter the NVIDIA CUDA/NVENC default path. See #61.
 
