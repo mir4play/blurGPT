@@ -75,7 +75,11 @@ class SettingsDialog(QDialog):
         self.device.addItem("GPU 0 (recommended)", 0)
         self.device.addItem("CPU (not recommended)", "cpu")
         self.device.setCurrentIndex(0 if settings["device"] == 0 else 1)
-        self.device.setToolTip("CUDA device used by YOLO inference.")
+        self.device.setToolTip(
+            "Inference device for YOLO. GPU 0 is the NVIDIA CUDA (or compatible) device. "
+            "CPU is an explicit compatibility option and is slower. "
+            "Selecting CPU does not change the video encoder; on a pure CPU system also choose OpenCV / mp4v."
+        )
         form.addRow("Device", self.device)
 
         self.detect_every = QSpinBox()
@@ -115,7 +119,9 @@ class SettingsDialog(QDialog):
         encoder_index = 0 if settings["video_encoder"] == "h264_nvenc" else 1
         self.encoder.setCurrentIndex(encoder_index)
         self.encoder.setToolTip(
-            "NVENC uses the NVIDIA hardware encoder. OpenCV is the compatibility fallback."
+            "NVENC uses the NVIDIA hardware encoder (requires a compatible GPU and FFmpeg). "
+            "OpenCV / mp4v is the software/compatibility fallback and is required on systems without NVENC. "
+            "Inference device and encoder are independent."
         )
         form.addRow("Video encoder", self.encoder)
 
