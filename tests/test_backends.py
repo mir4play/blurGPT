@@ -101,3 +101,58 @@ def test_inspect_backend_capabilities_reports_torch_import_failure(monkeypatch):
     assert capabilities.cpu_available is False
     assert capabilities.cuda_api_available is False
     assert "ModuleNotFoundError" in capabilities.torch_import_error
+
+
+def test_inspect_backend_capabilities_zero_device_count_not_available():
+    """is_available=True with device_count=0 must not report the backend as available."""
+    capabilities = backends.inspect_backend_capabilities(
+        _torch_module(cuda_available=True, cuda_count=0, cuda_version="12.8")
+    )
+
+    assert capabilities.cuda_available is False
+    assert capabilities.rocm_available is False
+    assert capabilities.cuda_api_available is False
+    assert capabilities.cuda_api_device_count == 0
+    assert capabilities.cuda_probe_error is None
+
+
+def test_inspect_backend_capabilities_prefers_rocm_when_both_versions_present():
+    """When both CUDA and HIP version strings are present, treat the CUDA API as ROCm."""
+    capabilities = backends.inspect_backend_capabilities(
+        _torch_module(
+            cuda_available=True,
+            cuda_count=1,
+            cuda_version="12.8",
+            hip_version="6.3",
+        )
+    )
+
+    assert capabilities.cuda_available is False
+    assert capabilities.rocm_available is True
+    assert capabilities.cuda_api_available is True
+    assert capabilities.cuda_api_backend_name == "ROCm"
+    assert capabilities.cuda_runtime_version == "12.8"
+    assert capabilities.rocm_runtime_version == "6.3"
+
+
+def test_inspect_backend_capabilities_preserves_xpu_probe_errors():
+    def fail_probe():
+        raise RuntimeError("xpu driver mismatch")
+
+    failing_api = SimpleNamespace(
+        is_available=fail_probe,
+        device_count=lambda: 1,
+    )
+    torch_module = SimpleNamespace(
+        __version__="2.8.0",
+        version=SimpleNamespace(cuda=None, hip=None),
+        cuda=_device_api(False, 0),
+        xpu=failing_api,
+    )
+
+    capabilities = backends.inspect_backend_capabilities(torch_module)
+
+    assert capabilities.xpu_available is False
+    assert capabilities.xpu_device_count == 0
+    assert capabilities.xpu_probe_error == "RuntimeError: xpu driver mismatch"
+    assert capabilities.cuda_api_available is False
