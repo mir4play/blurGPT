@@ -1,6 +1,6 @@
 # Hardware backend inventory
 
-**Source audit date:** 2026-11-09  
+**Source audit date:** 2026-11-16  
 **Scope:** source-level inspection of the current implementation plus a narrow CPU + OpenCV source-runtime smoke on a hosted Windows GitHub Actions runner. No AMD/Intel GPU runtime tests or frozen-build CPU tests were performed.
 
 This document records what the current code actually selects and validates. It is not a promise that every listed device or backend is supported.
@@ -21,7 +21,7 @@ This is the path represented by the existing benchmark history and the maintaine
 |---|---|---|
 | Device setting | `core/settings.py` accepts `"cpu"` or a non-negative integer device index. `config.py` defaults to `0`. | An integer is treated as a CUDA device index; there is no general backend/device descriptor. |
 | GUI selection | `gui/settings_dialog.py` exposes GPU 0 and CPU. | The UI does not enumerate AMD, Intel XPU, or multiple named accelerator backends. |
-| Capability probe | `core/backends.py` reports PyTorch CPU availability, distinguishes NVIDIA CUDA from ROCm/HIP, and probes `torch.xpu` when exposed. | Detection is informational only: it does not select devices, install dependencies, or validate inference. |
+| Capability probe | `core/backends.py` reports PyTorch CPU availability, distinguishes NVIDIA CUDA from ROCm/HIP, and probes `torch.xpu` when exposed. Non-GPU unit tests cover edge cases: zero device count (not marked available), dual CUDA+HIP version strings (prefer ROCm), and XPU probe errors. | Detection is informational only: it does not select devices, install dependencies, or validate inference. Tests use injected mocks; they do not certify real hardware. |
 | Preflight | `core/preflight.py` uses the capability probe for GPU device checks. It accepts the existing integer device index through PyTorch's CUDA-compatible API and identifies ROCm when the HIP runtime is exposed. | XPU can be detected but cannot yet be selected. The CPU path still requires explicit selection. |
 | Inference | `core/detector.py` passes the configured device directly to `YOLO.predict(device=...)`. | Hardware-independent tests cover explicit CPU and integer device forwarding; this does not constitute backend runtime validation. |
 | Benchmark environment | `core/benchmark.py` records the CPU identifier, selected inference backend, PyTorch version, CUDA/ROCm runtime versions, CUDA-compatible GPU name, and XPU availability/name when exposed. | Device-name queries are best-effort. XPU is reported for diagnostics but is not selectable for inference. |
