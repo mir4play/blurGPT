@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+HEAD: `0d75d35` (2026-11-16)
+
 - Tests: additional non-GPU edge cases for the PyTorch capability probe (zero device count, dual CUDA+HIP version strings, XPU probe errors). Related to #61.
 - GUI settings: clarified Device and Video encoder tooltips (CPU is explicit and independent of the encoder; OpenCV/mp4v is required on pure CPU systems). Related to #61.
 - CPU preflight now reports a missing or unloadable PyTorch runtime before processing, without probing accelerator devices.
