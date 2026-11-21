@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-**Main HEAD:** `cd0bbd9` (2026-11-18; includes capability-probe edge-case tests for #61).
+**Main HEAD:** `35b9f33` (2026-11-21; previous Unreleased SHA refresh).
 
 - Tests: additional non-GPU edge cases for the PyTorch capability probe (zero device count, dual CUDA+HIP version strings, XPU probe errors). Related to #61.
 - GUI settings: clarified Device and Video encoder tooltips (CPU is explicit and independent of the encoder; OpenCV/mp4v is required on pure CPU systems). Related to #61.
